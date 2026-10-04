@@ -1,0 +1,95 @@
+{
+  "execution_mode": "FIXTURE_REPLAY",
+  "requests": [
+    {
+      "params": {
+        "target": "eflaw",
+        "MST": "283839",
+        "efYd": "20260911",
+        "JO": "000200"
+      },
+      "file": "../tests/fixtures/replay/130e2de7d2984f54a30555681d552ff9.xml",
+      "sha256": "fa8dc04d6a373b95830e12ab01c822df517ccdf2e39522647b8fe6dccd6a4fff"
+    },
+    {
+      "params": {
+        "target": "admrul",
+        "ID": "2000000091702"
+      },
+      "file": "../tests/fixtures/replay/1ac211a613c647219fe0dbc5383f2e77.xml",
+      "sha256": "007fa28170a2056e515fe4d3b5a780d855f40eb67d72c05d42ed64cd1beec2fc"
+    },
+    {
+      "params": {
+        "target": "ordin",
+        "MST": "2023421"
+      },
+      "file": "../tests/fixtures/replay/088d1387fbeb485c99468c59b23e1427.xml",
+      "sha256": "0f77ec50f886cdd828020f4b90c5ae2cdd58a8ac9539caba902d226785a8fbd0"
+    },
+    {
+      "params": {
+        "target": "trty",
+        "ID": "983"
+      },
+      "file": "../tests/fixtures/replay/7cfe9774693f4d05ae7c82d720292f13.xml",
+      "sha256": "c0cc65990d221e1164a8a63ea3dc9a38abf25ce735c38a0d2de5616147f6abc2"
+    },
+    {
+      "params": {
+        "target": "school",
+        "ID": "2200000157427"
+      },
+      "file": "../tests/fixtures/replay/f35dbbaf424d43d8b62e84b6c4f620c9.xml",
+      "sha256": "3a88c4105ffc3348d52b97067bfb689abbce6f56956575791910737e10c298b4"
+    },
+    {
+      "params": {
+        "target": "eflaw",
+        "MST": "289537",
+        "efYd": "20260911",
+        "JO": "000402"
+      },
+      "file": "../tests/fixtures/replay/f9cb3f0bc8ab47fd81b6d7a66454b8d5.xml",
+      "sha256": "2e5b51d97958bb60c0fd02261a616cb6f8dc58aa90b8e38467a83cc839cef7b2"
+    },
+    {
+      "params": {
+        "target": "lsDelegated",
+        "MST": "289537"
+      },
+      "file": "../tests/fixtures/replay/bb142e6841884afdad5dd859a8f9044a.xml",
+      "sha256": "6bf2d537f685e141b8c8bcb95f534c18975f2180445a90054dbe36122c8c22f7"
+    },
+    {
+      "params": {
+        "target": "eflaw",
+        "MST": "283839",
+        "efYd": "20260911",
+        "JO": "000706"
+      },
+      "file": "../tests/fixtures/replay/09b7d097584d4cbf88319a8eafbe497d.xml",
+      "sha256": "fde9120b9f39e8ac2021b4b4b62144b869bfa150014fbf183490ff0bca0bf69e"
+    },
+    {
+      "params": {
+        "target": "eflaw",
+        "MST": "283839",
+        "efYd": "20260911",
+        "JO": "000709"
+      },
+      "file": "../tests/fixtures/replay/37e8a56e206d43f8beefc0582c874f65.xml",
+      "sha256": "58ab80c4fb219dadf7ed9f31a397ee562ac7e220c5199216c46f9a06e25bcb7e"
+    },
+    {
+      "params": {
+        "target": "eflaw",
+        "MST": "283839",
+        "efYd": "20260911",
+        "JO": "004000"
+      },
+      "file": "../tests/fixtures/replay/5e3b13f4ae114f3ab84e1198744c5398.xml",
+      "sha256": "5681c4092dbe23e5ec4a262730f5fd9e7d93ccb368c68c89f0c16bc7bb6a8443"
+    }
+  ]
+}

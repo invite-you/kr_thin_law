@@ -1,0 +1,102 @@
+{
+  "root_need": {
+    "api_family": "law",
+    "source_unit_id": "pipa-decree:289537:4:2",
+    "observed_identity": null,
+    "version_binding": {
+      "status": "RESOLVED",
+      "provider_id": "289537",
+      "version_id": "289537",
+      "effective_date": "20260911",
+      "expected_law_key": "0114682026091036671",
+      "expected_law_id": "011468"
+    },
+    "locator": {
+      "article": 4,
+      "branch": 2
+    },
+    "evidence_role": "ROOT_NORMATIVE",
+    "support_eligible": true,
+    "discovery_channel": "root"
+  },
+  "selected_needs": [
+    {
+      "api_family": "law",
+      "source_unit_id": "pipa:283839:7:6",
+      "observed_identity": "213857",
+      "version_binding": {
+        "status": "RESOLVED",
+        "provider_id": "283839",
+        "version_id": "283839",
+        "effective_date": "20260911",
+        "expected_law_key": "0113572026031021445",
+        "expected_law_id": "011357"
+      },
+      "locator": {
+        "article": 7,
+        "branch": 6
+      },
+      "evidence_role": "TARGET_NORMATIVE",
+      "support_eligible": true,
+      "discovery_channel": "selected_targets",
+      "relation_to_root": "caller_selected_target"
+    },
+    {
+      "api_family": "law",
+      "source_unit_id": "pipa:283839:7:9",
+      "observed_identity": "213857",
+      "version_binding": {
+        "status": "RESOLVED",
+        "provider_id": "283839",
+        "version_id": "283839",
+        "effective_date": "20260911",
+        "expected_law_key": "0113572026031021445",
+        "expected_law_id": "011357"
+      },
+      "locator": {
+        "article": 7,
+        "branch": 9
+      },
+      "evidence_role": "TARGET_NORMATIVE",
+      "support_eligible": true,
+      "discovery_channel": "selected_targets",
+      "relation_to_root": "caller_selected_target"
+    },
+    {
+      "api_family": "law",
+      "source_unit_id": "pipa:283839:40:0",
+      "observed_identity": "213857",
+      "version_binding": {
+        "status": "RESOLVED",
+        "provider_id": "283839",
+        "version_id": "283839",
+        "effective_date": "20260911",
+        "expected_law_key": "0113572026031021445",
+        "expected_law_id": "011357"
+      },
+      "locator": {
+        "article": 40,
+        "branch": null
+      },
+      "evidence_role": "TARGET_NORMATIVE",
+      "support_eligible": true,
+      "discovery_channel": "selected_targets",
+      "relation_to_root": "caller_selected_target"
+    }
+  ],
+  "as_of": null,
+  "coverage": {
+    "required_channels": [
+      "root",
+      "selected_targets"
+    ],
+    "completed_channels": [],
+    "residual_discovery_complete": true,
+    "missing_context": []
+  },
+  "temporal_binding": {
+    "mixed_versions": false,
+    "cutover_resolved": false
+  },
+  "example_scope": "Caller-supplied selection and coverage flags; no independent semantic audit"
+}

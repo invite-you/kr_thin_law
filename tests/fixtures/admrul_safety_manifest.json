@@ -1,0 +1,31 @@
+{
+ "requests": [
+  {
+   "params": {
+    "target": "admrul",
+    "query": "개인정보의 안전성 확보조치 기준",
+    "display": "100",
+    "page": "1",
+    "nw": "2"
+   },
+   "file": "admrul_search_safety_history.xml",
+   "sha256": "903b28f85dd893a6f14fd969348522c45aed6262f3f917bbe32fff411df57efe"
+  },
+  {
+   "params": {
+    "target": "admrul",
+    "ID": "2100000281400"
+   },
+   "file": "admrul_2100000281400_safety.xml",
+   "sha256": "c7964a1ae22ea82b438c066f1c2224c9b2f2a7744dbf35861bf14e836e579d6c"
+  },
+  {
+   "params": {
+    "target": "admrul",
+    "ID": "2100000229672"
+   },
+   "file": "admrul_2100000229672_safety.xml",
+   "sha256": "49ce1fc5fd1cbbd7b63082a40ec948fab4c8cb8d13e9daeb736888b362ade653"
+  }
+ ]
+}

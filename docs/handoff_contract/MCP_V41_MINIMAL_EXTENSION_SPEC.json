@@ -1,0 +1,42 @@
+{
+  "name": "Thin MCP v4.1 context-fetch extension",
+  "principle": "Add only source retrieval capabilities needed to consume v4 api_family observations. No legal semantic judgment.",
+  "keep": [
+    "law_article",
+    "law_references"
+  ],
+  "add": [
+    {
+      "capability": "source_fragment",
+      "input": [
+        "api_family",
+        "observed_identity",
+        "as_of_or_effective_date",
+        "locator"
+      ],
+      "output": [
+        "official_source_identity",
+        "version_identity_or_unresolved",
+        "structured_text",
+        "effective/provenance fields",
+        "response hash"
+      ],
+      "allowed": "Mechanical provider-specific fetch + structural preservation",
+      "forbidden": [
+        "Dependency promotion",
+        "legal effect classification",
+        "semantic closure",
+        "guessing a missing historical version",
+        "role transform inference"
+      ]
+    }
+  ],
+  "family_dispatch": {
+    "law": "eflaw/eflawjosub",
+    "admin_rule": "official administrative-rule detail capability",
+    "ordinance": "official local-ordinance detail capability",
+    "institution_rule": "official institution-rule detail capability if available",
+    "treaty": "official treaty detail capability if available"
+  },
+  "fail_closed": "If the family/version/locator cannot be fetched and bound, return FETCH_CAPABILITY_MISSING or TARGET_VERSION_UNRESOLVED. Never substitute another family or use observed_seq as the version."
+}

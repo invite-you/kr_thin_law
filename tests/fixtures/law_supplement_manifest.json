@@ -1,0 +1,14 @@
+{
+ "requests": [
+  {
+   "params": {"target": "eflaw", "MST": "283839", "efYd": "20260911"},
+   "file": "eflaw_full_283839_pipa.xml",
+   "sha256": "2fb8e80f4f5a2f6ee1d6b8c8597b8af482148babb53362aac31508c09ac19d71"
+  },
+  {
+   "params": {"target": "eflaw", "MST": "289537", "efYd": "20260911"},
+   "file": "eflaw_full_289537_pipa_decree.xml",
+   "sha256": "c64244e7ac955942639f9a99cb352add4516fd1001ff2278e1d1fe2a7e4a6adf"
+  }
+ ]
+}

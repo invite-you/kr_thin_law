@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "legal-thin-mcp": {
+      "command": "C:\\path\\to\\legal-thin-mcp\\.venv\\Scripts\\python.exe",
+      "args": [
+        "-X",
+        "utf8",
+        "-m",
+        "law_mcp"
+      ],
+      "env": {
+        "LAW_API_OC": "YOUR_ISSUED_API_VALUE"
+      }
+    }
+  }
+}

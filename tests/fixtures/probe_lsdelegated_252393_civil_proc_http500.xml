@@ -1,0 +1,75 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+<meta http-equiv="Cache-Control" content="No-Cache" />
+<meta http-equiv="Pragma" content="No-Cache" />
+<link rel="stylesheet" type="text/css" href="/css/default.css" />
+<title>국가법령정보센터 | 오류페이지</title>
+<script type="text/javascript">
+	/*#13176 전화 번호 일주일단위 교차출력*/
+	$(document).ready(function(){
+		var preDay = '2019-02-11';
+		var toDay = new Date();
+	
+		preDay = new Date(preDay);
+		diffPreDay = new Date(preDay.getFullYear(), preDay.getMonth()+1, preDay.getDate());
+		diffToDay = new Date(toDay.getFullYear(), toDay.getMonth()+1, toDay.getDate());
+	
+		var diff = Math.abs(diffToDay.getTime() - diffPreDay.getTime());
+		diff = Math.ceil(diff / (1000*3600*24));
+		var flag = Math.floor((diff / 7) % 2);
+		
+		if(flag == 0){
+			$('#lawTelNum').html("044-200-6797");
+		}else if(flag == 1){
+			$('#lawTelNum').html("044-200-6797");
+		}
+	});
+
+	function goPrePage() {
+		var pre = document.referrer;
+		location.href = pre;
+	}
+</script>
+</head>
+
+<body class="bgnone">
+
+<div class="errorpage">
+	<div class="t"><h2 style="padding: 18px 0 0 27px;">:: 페이지를 찾을수 없습니다.</h2></div>
+	<div class="m" style="padding: 29px 0 5px 33px;">
+		<div class="txt" style="padding: 0 23px 0 180px;">
+			<p>
+			페이지가 존재하지 않거나 잘못된 링크를 사용하셨습니다.<br/>
+			다시한번 확인해 주시고 이용하여 주시기 바랍니다.
+			</p>
+			<br/>
+			<p>법제처 국가법령정보센터팀  ( <span id="lawTelNum">044-200-6797</span> )</p>
+		</div>
+		<div class="logo"><img src="/DRF/images/common/logo_error.gif" alt="국가법령정보센터" /></div>
+	</div>
+</div>
+
+</body>
+</html>

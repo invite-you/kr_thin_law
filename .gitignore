@@ -1,0 +1,20 @@
+# 실행 환경·캐시
+.venv/
+__pycache__/
+*.pyc
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+# 증거·인계 패키지와 대용량 검증 산출물은 원본 보존 대상이라 git 밖에 둔다
+*.zip
+legal_card_mcp_handoff_20260922/
+legal_core_bundle/
+legal_handoff_external_20260923/
+legal_mcp_thin_v4_20260925/
+LEGAL_MCP_HANDOFF_20260927/
+REVIEW_PACKAGE_P0A_20260925/
+validation/
+# 삭제 대기 폴더
+_삭제폴더/

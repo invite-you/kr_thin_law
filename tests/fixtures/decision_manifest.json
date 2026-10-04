@@ -1,0 +1,42 @@
+{
+ "requests": [
+  {
+   "params": {
+    "target": "ppc",
+    "query": "제29조",
+    "search": "2",
+    "display": "5",
+    "page": "1"
+   },
+   "file": "ppc_search_body_art29.xml",
+   "sha256": "55f02e6ad34817bc0b9bff031597dfe3f2c2c51c4bdaebd7b9751098c72de613"
+  },
+  {
+   "params": {
+    "target": "ppc",
+    "ID": "4835"
+   },
+   "file": "ppc_4835.xml",
+   "sha256": "fd1b1efb695e36fb4ab8139a2199709d78769c0d3815776ce8ac247ddab71a21"
+  },
+  {
+   "params": {
+    "target": "prec",
+    "query": "안전성 확보에 필요한 조치",
+    "search": "2",
+    "display": "5",
+    "page": "1"
+   },
+   "file": "prec_search_body_safety.xml",
+   "sha256": "9440d6f92ffb025bf6aa2f05455662703db0357f2aebda49d85ff7a8171a98e2"
+  },
+  {
+   "params": {
+    "target": "prec",
+    "ID": "618177"
+   },
+   "file": "prec_618177.xml",
+   "sha256": "fb187ba21a38610c648f2def8e0ce5e74814ce6318d3ea31c5eb41db8ed78fc6"
+  }
+ ]
+}

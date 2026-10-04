@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools>=77,<83"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "legal-thin-mcp"
+version = "4.8.0"
+description = "Version-bound Korean legal source transport and explicit context assembly"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["mcp==2.2.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8,<10", "build>=1,<2", "ruff>=0.15,<0.16", "mypy>=1.19,<2"]
+
+[project.scripts]
+legal-thin-mcp = "law_mcp.server:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "--import-mode=importlib"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E9", "F63", "F7", "F82"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/law_mcp"]
+check_untyped_defs = true
+ignore_missing_imports = true
+

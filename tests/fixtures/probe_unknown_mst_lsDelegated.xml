@@ -1,0 +1,58 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+</head>
+<body>
+	
+
+
+<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="robots" content="noindex, nofollow" />
+
+<link rel="stylesheet" type="text/css" href="/DRF/js/ext/resources/css/ext-all.css" />
+<link rel="stylesheet" type="text/css" href="/DRF/css/common.css" />
+<link rel="stylesheet" type="text/css" href="/DRF/css/indexCommon.css" />
+<link rel="stylesheet" type="text/css" href="/DRF/css/subCommon.css" />
+<link rel="stylesheet" type="text/css" href="/DRF/css/fonts.css" />
+<link rel="stylesheet" type="text/css" href="/DRF/css/emp.css" />
+<script type="text/javascript" src="/DRF/js/common/jquery/jquery.js"></script>
+<script type="text/javascript" src="/DRF/js/common/jquery/jquery.form.js"></script>
+<script type="text/javascript" src="/DRF/js/ext/adapter/ext/ext-base.js"></script>
+<script type="text/javascript" src="/DRF/js/ext/ext-all.js"></script>
+<script type="text/javascript" src="/DRF/js/common.js"></script>
+<script type="text/javascript" src="/DRF/js/common-ex.js"></script>
+<script type="text/javascript" src="/DRF/js/CookieUtil.js"></script>
+<title>국가법령통합관리시스템</title>
+
+	<table style="width: 100%; height: 100%;">
+		<tr>
+			<td align="center"
+				style="font-family: 돋움, Arial; font-size: 14px; font-weight: bold; color: #006699;">
+				<a href="http://www.law.go.kr"><img
+					src="/DRF/images/common/toplogo.gif"
+					alt="국가법령정보통합구축시스템  로고" border="0" /></a><br /> <br />
+				<center>
+					일치하는 법령이 없습니다.<br/>
+				</center>
+			</td>
+		</tr>
+	</table>
+</body>
+</html>
