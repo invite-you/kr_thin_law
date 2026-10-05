@@ -99,7 +99,7 @@ def _provider_declared_failure(raw: bytes) -> dict[str, Any] | None:
         "resultCode", "resultMsg",
         "errMsg", "returnAuthMsg", "returnReasonCode",
         "errorCode", "errorMessage",
-        "code", "message", "msg",
+        "code", "message", "msg", "result",
     )
     fields = {tag: first(tag) for tag in field_tags if first(tag)}
 
@@ -123,10 +123,24 @@ def _provider_declared_failure(raw: bytes) -> dict[str, Any] | None:
         or fields.get("returnAuthMsg", "")
         or fields.get("errMsg", "")
         or fields.get("errorMessage", "")
+        or fields.get("result", "")
         or fields.get("message", "")
         or fields.get("msg", "")
         or "provider declared request failure"
     )
+    detail_parts = []
+    for value in (
+        fields.get("result", ""),
+        fields.get("msg", ""),
+        fields.get("returnAuthMsg", ""),
+        fields.get("errMsg", ""),
+        fields.get("errorMessage", ""),
+    ):
+        if value and value not in detail_parts:
+            detail_parts.append(value)
+    if detail_parts:
+        provider_message = " ".join(detail_parts)
+
     return {
         "provider_code": provider_code,
         "provider_message": provider_message,
