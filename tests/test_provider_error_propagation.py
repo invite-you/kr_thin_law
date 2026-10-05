@@ -15,6 +15,7 @@ from law_mcp.card_source import (
     parse_lsdelegated_xml,
 )
 from law_mcp.client import OfficialClient
+from law_mcp.context_producer import ContextProducer
 from law_mcp.search import search_documents
 from law_mcp.server import create_server
 
@@ -178,6 +179,26 @@ def test_http_error_keeps_http_status_and_provider_body_cause():
     assert err.retryable is True
     assert "사용자 정보 검증에 실패" in err.provider_message
     assert err.provider_fields["msg"].startswith("OPEN API 호출")
+
+
+def test_context_producer_does_not_swallow_provider_failure():
+    def failing_fetch(**kwargs):
+        raise ProviderResponseError(
+            "PROVIDER_DECLARED_ERROR",
+            "official provider returned an error response",
+            retryable=False,
+            provider_response=LIVE_AUTH_FAILURE.decode("utf-8"),
+        )
+
+    producer = ContextProducer(failing_fetch)
+    with pytest.raises(ProviderResponseError) as caught:
+        producer.produce({
+            "api_family": "law",
+            "version_binding": {"version_id": "1"},
+            "locator": {"article": 1},
+        })
+    assert "UPSTREAM_RESPONSE:" in str(caught.value)
+    assert "사용자 정보 검증에 실패" in str(caught.value)
 
 
 def test_mcp_propagates_provider_failure_as_real_tool_error_with_raw_response():
