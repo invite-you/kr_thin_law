@@ -7,6 +7,7 @@ import pytest
 
 from law_mcp.reference_bundle import (
     _parse_document,
+    _validate_body_targets,
     extract_same_document_references,
     fetch_law_reference_bundle,
     focused_reverse_paths,
@@ -174,6 +175,50 @@ def test_external_and_document_relative_prefixes_are_not_same_document_edges():
     assert "EXTERNAL_DOCUMENT_PREFIX" in reasons
     assert "RELATIVE_DOCUMENT_PREFIX" in reasons
 
+
+
+def test_pipa_coordinated_external_article_does_not_leak_as_same_document_edge():
+    out = fetch_law_reference_bundle(
+        _pipa_client(),
+        selector=_version_selector(),
+        text_mode="graph_only",
+    )
+    assert not any(
+        edge["same_document"]
+        and edge["source"]["node_key"] == "article:7-7"
+        and edge["target"]["node_key"] in {"article:355", "article:356"}
+        for edge in out["reference_edges"]
+    )
+    assert any(
+        row["source"]["article"] == "7"
+        and row["source"]["branch"] == "7"
+        and row["raw_text"] == "제356조"
+        and row["reason"] == "EXTERNAL_NAMED_DOCUMENT_INHERITED"
+        for row in out["body_unresolved_observations"]
+    )
+
+
+def test_absent_same_document_target_is_kept_unresolved_not_indexed():
+    observations = [{
+        "observation_id": "body:1",
+        "source": {"article": "1", "branch": "", "segment_path": "head"},
+        "target": {
+            "article": "999", "branch": "", "paragraph": "", "item": "", "subitem": ""
+        },
+        "raw_text": "제999조",
+        "span": {"start": 0, "end": 6},
+        "context": "제999조",
+        "scope_basis": "BARE_ARTICLE_LOCATOR",
+        "range_expanded": False,
+    }]
+    valid, unresolved = _validate_body_targets(
+        observations,
+        [],
+        articles=[{"node_key": "article:1"}],
+    )
+    assert valid == []
+    assert unresolved[0]["reason"] == "TARGET_NOT_PRESENT_IN_DOCUMENT_VERSION"
+    assert unresolved[0]["candidate_target"]["article"] == "999"
 
 def test_range_expansion_is_mechanical_and_bounded():
     articles = [{
