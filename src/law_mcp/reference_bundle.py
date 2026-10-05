@@ -476,11 +476,12 @@ def _reference_edges(
         )
         item["same_document_by_title"] = same_document
         provider_out.append(item)
-        if target.get("api_family") != "law":
+        source_article = str(item.get("source_article") or "").strip()
+        if target.get("api_family") != "law" or not source_article.isdigit():
             continue
         for target_article, target_branch in _provider_article_targets(item):
             edge = ensure(
-                str(item.get("source_article") or ""),
+                str(int(source_article)),
                 _norm_branch(item.get("source_branch")),
                 str(target.get("observed_title") or ""),
                 str(target.get("observed_seq") or ""),
@@ -560,14 +561,9 @@ def focused_reverse_paths(
     return results
 
 
-def _focus(
-    focus: dict[str, Any] | None,
-    *,
-    edges: list[dict[str, Any]],
-    reverse_index: dict[str, list[str]],
-) -> list[dict[str, Any]]:
+def _validate_focus(focus: dict[str, Any] | None) -> dict[str, Any] | None:
     if focus is None:
-        return []
+        return None
     if not isinstance(focus, dict) or set(focus) - {"targets", "max_depth"}:
         raise ValueError("focus accepts only targets and max_depth")
     targets = focus.get("targets")
@@ -576,21 +572,40 @@ def _focus(
     max_depth = int(focus.get("max_depth", 2))
     if not 1 <= max_depth <= 3:
         raise ValueError("focus.max_depth must be 1..3")
-    out: list[dict[str, Any]] = []
+    normalized: list[dict[str, str]] = []
     for target in targets:
         if not isinstance(target, dict) or set(target) - {"article", "branch"}:
             raise ValueError("each focus target accepts only article and branch")
         if "article" not in target:
             raise ValueError("each focus target requires article")
+        article = str(int(str(target["article"])))
+        branch = _norm_branch(target.get("branch"))
+        normalized.append({"article": article, "branch": branch})
+    return {"targets": normalized, "max_depth": max_depth}
+
+
+def _focus(
+    focus: dict[str, Any] | None,
+    *,
+    edges: list[dict[str, Any]],
+    reverse_index: dict[str, list[str]],
+) -> list[dict[str, Any]]:
+    if focus is None:
+        return []
+    out: list[dict[str, Any]] = []
+    for target in focus["targets"]:
         node = _article_key(target["article"], target.get("branch"))
         out.append({
             "target": {
-                "article": str(int(str(target["article"]))),
-                "branch": _norm_branch(target.get("branch")),
+                "article": target["article"],
+                "branch": target.get("branch") or "",
                 "node_key": node,
             },
             "paths": focused_reverse_paths(
-                node, edges=edges, reverse_index=reverse_index, max_depth=max_depth
+                node,
+                edges=edges,
+                reverse_index=reverse_index,
+                max_depth=int(focus["max_depth"]),
             ),
         })
     return out
@@ -608,6 +623,7 @@ def fetch_law_reference_bundle(
         raise ValueError(
             "text_mode must be graph_only, referenced_units, or full_document"
         )
+    validated_focus = _validate_focus(focus)
 
     if selected["mode"] == "current":
         body_request = {"target": "eflaw", "ID": selected["law_id"]}
@@ -665,7 +681,7 @@ def fetch_law_reference_bundle(
     )
     outgoing, reverse = _indexes(edges)
     focused_paths = _focus(
-        focus, edges=edges, reverse_index=reverse
+        validated_focus, edges=edges, reverse_index=reverse
     )
 
     referenced_nodes: set[str] = set(outgoing)
