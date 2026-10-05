@@ -14,6 +14,12 @@ _TARGETS = {
     "ppc": ("ppc", None),          # 개인정보보호위원회 결정문(의결서). 안건명이 빈 결정이 많아 본문 검색 권장
     "prec": ("prec", None),        # 법원 판례
 }
+_EXPECTED_ROOTS = {
+    "eflaw": {"LawSearch"},
+    "admrul": {"AdmRulSearch"},
+    "ppc": {"Ppc", "PpcSearch"},
+    "prec": {"PrecSearch", "Prec"},
+}
 
 
 def search_documents(
@@ -39,9 +45,40 @@ def search_documents(
     except ET.ParseError as exc:
         raise ProviderResponseError("PARSE_ERROR", f"search listing is not well-formed XML: {exc}",
                                     retryable=True) from exc
+    if root.tag not in _EXPECTED_ROOTS[target]:
+        raise ProviderResponseError(
+            "UNEXPECTED_ROOT",
+            f"search response root for {target} must be one of "
+            f"{sorted(_EXPECTED_ROOTS[target])}, got {root.tag}",
+            retryable=False,
+            raw_preview=raw[:500].decode("utf-8", errors="replace"),
+        )
+    total_text = root.findtext("totalCnt")
+    if total_text is None or not total_text.strip():
+        raise ProviderResponseError(
+            "MISSING_STRUCTURE",
+            "search response is missing totalCnt; refusing to treat it as an empty success",
+            retryable=False,
+            raw_preview=raw[:500].decode("utf-8", errors="replace"),
+        )
+    try:
+        total = int(total_text.strip())
+    except ValueError as exc:
+        raise ProviderResponseError(
+            "INVALID_PROVIDER_VALUE",
+            f"search response totalCnt is not an integer: {total_text!r}",
+            retryable=False,
+            raw_preview=raw[:500].decode("utf-8", errors="replace"),
+        ) from exc
+    if total < 0:
+        raise ProviderResponseError(
+            "INVALID_PROVIDER_VALUE",
+            f"search response totalCnt is negative: {total}",
+            retryable=False,
+            raw_preview=raw[:500].decode("utf-8", errors="replace"),
+        )
     rows = [{child.tag: (child.text or "").strip() for child in item}
             for item in root if item.tag == item_tag]
-    total = int((root.findtext("totalCnt") or "0").strip() or 0)
     return {
         "status": "OK", "target": target, "query": query, "include_history": include_history,
         "search_body": search_body, "total_count": total, "page": page, "display": display,
