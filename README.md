@@ -1,8 +1,8 @@
-# Legal Thin MCP 4.8.0
+# Legal Thin MCP 4.9.0
 
 공식 한국 법령 자료를 정확한 판본과 원문 구조로 전달하는 실행 가능한 프로젝트입니다. MCP는 모델이 외부 조회 도구를 호출하는 연결 규약입니다. 법적 의미와 필요한 참조의 선택은 이 프로젝트를 사용하는 별도 분석기가 맡습니다.
 
-현재 실행 기준은 이 폴더의 `src/`, `tests/`, `pyproject.toml`입니다. 이 저장소는 4.8.0의 현재 실행 파일에서 새로 시작하며, 과거 커밋과 인계 ZIP은 원래 로컬 프로젝트에 보존했습니다.
+현재 실행 기준은 이 폴더의 `src/`, `tests/`, `pyproject.toml`입니다. 이 저장소는 4.8.0에서 공개를 시작했고 4.9.0에서 문서 단위 참조 묶음을 추가했습니다. 과거 커밋과 인계 ZIP은 원래 로컬 프로젝트에 보존했습니다.
 
 ## 설치와 실행
 
@@ -26,6 +26,7 @@ $env:LAW_API_OC = '발급받은 국가법령정보 API 값'
 |---|---|
 | `law_article` | 지정 법령 판본의 조·항·호·목과 공식 식별값 |
 | `law_references` | 공식 참조 관측값과 제공 순서; 법적 관계의 승인 결과는 아님 |
+| `law_reference_bundle` | 법령 한 판본의 전체 본문 명시 조문참조와 `lsDelegated` 관측을 합쳐 outgoing·같은 문서 reverse index를 반환. `focus`로 1~3 hop 경로 선택 가능 |
 | `source_fragment` | 법령·행정규칙·자치법규·조약·기관규칙의 판본 입력에 따른 공식 원문 |
 | `context_packet` | 호출자가 선택한 원문만 별도 문맥 조립기로 수집한 묶음 |
 | `validate_context_packet` | 문맥 묶음의 식별값·내용 해시·역할·누락·시간 입력 검사 |
@@ -41,6 +42,42 @@ $env:LAW_API_OC = '발급받은 국가법령정보 API 값'
 자료가 없거나 판본·시행일·세부 종류·요청 위치가 확인되지 않으면 상태값을 반환하고 `support_eligible=false`로 둡니다. 이 값은 해당 자료를 확정 근거로 사용하면 안 된다는 뜻입니다. 부칙·별표·표의 원문과 구조는 보존하며, 첨부파일 링크만 있고 원문이 없으면 누락을 표시합니다.
 
 문맥 조립기는 의미상 필요성을 판단하지 않습니다. 호출자가 `selected_needs`, 근거 역할, 탐색 완료 여부와 시간 확인 결과를 전달합니다. `READY`는 이 입력을 바탕으로 한 원문 전달 상태이며 법적 결론이나 `RESOLVED` 승인이 아닙니다. 같은 요청은 한 번의 조립 안에서만 합치고 원래 관측 기록은 모두 남깁니다.
+
+
+### 문서 단위 참조 묶음
+
+`law_reference_bundle`은 비싼 전체 본문 조회와 참조 조회를 한 번씩 실행한 뒤 그 결과를 한 묶음으로 재사용하기 위한 도구입니다.
+
+현행본은 안정 법령 ID만 지정합니다.
+
+```json
+{
+  "selector": {"mode": "current", "law_id": "011357"},
+  "text_mode": "referenced_units",
+  "focus": {"targets": [{"article": 29}], "max_depth": 2}
+}
+```
+
+특정 과거·미래 판본은 제공처 조회 일련번호(MST), 시행일과 함께 독립 판본 확인값을 넣어야 합니다.
+
+```json
+{
+  "selector": {
+    "mode": "version",
+    "mst": "283839",
+    "effective_date": "20260911",
+    "expected_law_key": "0113572026031021445",
+    "expected_law_id": "011357"
+  },
+  "text_mode": "graph_only"
+}
+```
+
+`text_mode`은 `graph_only`, `referenced_units`(기본), `full_document` 중 하나입니다. 전체 경로를 미리 펼치지 않고 양방향 index를 항상 돌려주며, `focus`가 있을 때만 1~3 hop 경로를 계산합니다.
+
+본문 보충 추출은 같은 문서의 **기계적으로 확정 가능한 명시 조문 locator**만 대상으로 합니다. `「형법」 제355조`, `법 제29조`, `같은 법 제29조`처럼 다른 문서 또는 선행 문맥이 필요한 표현은 같은 문서 edge로 추측하지 않고 unresolved 관측으로 남깁니다. `coverage.external_incoming=NOT_SEARCHED`이면 전국 역인용을 모두 찾았다는 뜻이 아닙니다. 특정 MST의 `lsDelegated`가 역사 시점에 완전하다는 보장도 하지 않습니다.
+
+세부 계약과 제한은 [참조 묶음 계약](docs/REFERENCE_BUNDLE.md) 및 [알려진 제한](KNOWN_LIMITATIONS.md)을 봅니다.
 
 ## 원문 재생과 검사
 
