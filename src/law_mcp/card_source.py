@@ -89,13 +89,8 @@ def _provider_declared_failure(raw: bytes) -> dict[str, Any] | None:
         node = root.find(f".//{tag}")
         return (node.text or "").strip() if node is not None and node.text else ""
 
-    direct = {
-        child.tag: (child.text or "").strip()
-        for child in list(root)
-        if len(child) == 0
-    }
-    result_code = direct.get("resultCode", "")
-    result_msg = direct.get("resultMsg", "")
+    result_code = first("resultCode")
+    result_msg = first("resultMsg")
     msg_norm = result_msg.strip().lower()
     declared_fail = bool(result_code and result_code not in {"0", "00"})
     declared_fail = declared_fail or msg_norm in {"fail", "failed", "failure", "error"}
@@ -158,8 +153,6 @@ def _raise_provider_declared_failure(raw: bytes) -> None:
     failure = _provider_declared_failure(raw)
     if failure is None:
         return
-    code = failure["provider_code"] or "UNKNOWN"
-    message = failure["provider_message"]
     raise ProviderResponseError(
         "PROVIDER_DECLARED_ERROR",
         "official provider returned an error response",
