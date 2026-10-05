@@ -277,6 +277,4 @@ def test_invalid_focus_and_text_mode_fail_before_io():
             selector=_version_selector(),
             focus={"targets": [{"article": 29}], "max_depth": 4},
         )
-    # Selector and text mode validate first; focus is intentionally checked after
-    # reference construction because focused paths depend on the built graph.
-    assert len(client.calls) == 2
+    assert client.calls == []
