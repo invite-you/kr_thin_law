@@ -51,7 +51,14 @@ jobs:
                       node = root.find(".//" + tag)
                       if node is not None:
                           nested[tag] = (node.text or "").strip()
-                  print("ROOT", root.tag, "DIRECT", keep, "NESTED", nested)
+                  leaf = {}
+                  for node in root.iter():
+                      if node is root or len(node):
+                          continue
+                      value = (node.text or "").strip()
+                      if value:
+                          leaf[node.tag] = value[:200]
+                  print("ROOT", root.tag, "DIRECT", keep, "NESTED", nested, "LEAF", leaf)
               except Exception as exc:
                   print("PARSE", type(exc).__name__, body[:120].decode("utf-8","replace"))
           PY
