@@ -6,6 +6,10 @@
 
 이 도구는 법적 의미 관계를 만들지 않습니다. 반환 edge는 **공식 제공처 관측 또는 법문에 명시된 조문 locator의 기계적 관측**입니다.
 
+## MCP wire validation
+
+`selector`와 `focus`는 MCP wire에서 단순 JSON object로 노출합니다. current/version을 `oneOf` 또는 discriminator로 나누지 않습니다. 실제 허용 필드와 값 검증은 bundle core의 strict validator가 하나의 진실원으로 수행하며, 잘못된 입력은 provider I/O 전에 거부됩니다.
+
 ## 입력
 
 ### 현행
