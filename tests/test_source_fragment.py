@@ -262,7 +262,7 @@ def test_annex_form_link_without_inline_body_is_missing_structural_context():
 @pytest.mark.parametrize("payload,code", [
     (b"<html>proxy error</html>", "HTML_RESPONSE"),
     ("<AdmRulService><행정규칙>".encode("utf-8"), "PARSE_ERROR"),
-    (b"<Error><message>missing</message></Error>", "UNEXPECTED_ROOT"),
+    (b"<Error><message>missing</message></Error>", "PROVIDER_DECLARED_ERROR"),
 ])
 def test_bad_provider_payloads_rejected(payload, code):
     with pytest.raises(ProviderResponseError) as caught:
