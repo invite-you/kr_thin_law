@@ -53,34 +53,52 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: python -m pip install -e .
-      - name: Official public sample bundle smoke
+      - name: Official public MCP wire smoke
         env:
           LAW_API_OC: test
         run: |
           python - <<'PY'
+          import asyncio
+          from mcp import Client
           from law_mcp.client import OfficialClient
-          from law_mcp.reference_bundle import fetch_law_reference_bundle
+          from law_mcp.server import create_server
 
-          client = OfficialClient(
-              oc="test",
-              capture_dir=None,
-              timeout=20,
-              max_attempts=2,
-          )
-          result = fetch_law_reference_bundle(
-              client,
-              selector={"mode": "current", "law_id": "1747"},
-              text_mode="graph_only",
-              focus={"targets": [{"article": 3}], "max_depth": 1},
-          )
-          assert result["status"] == "OK"
-          assert int(result["source"]["law_id"]) == 1747
-          assert result["coverage"]["body_scan"] == "COMPLETE_FOR_POLICY"
-          assert len(client.attempts) == 2
-          print({
-              "law": result["source"]["title"],
-              "articles": result["coverage"]["counts"]["document_articles"],
-              "edges": result["coverage"]["counts"]["reference_edges"],
-              "attempts": len(client.attempts),
-          })
+          async def main():
+              upstream = OfficialClient(
+                  oc="test",
+                  capture_dir=None,
+                  timeout=20,
+                  max_attempts=2,
+              )
+              server = create_server(upstream)
+              async with Client(server) as client:
+                  tools = await client.list_tools()
+                  bundle = next(tool for tool in tools.tools if tool.name == "law_reference_bundle")
+                  selector_schema = bundle.input_schema["properties"]["selector"]
+                  assert selector_schema["type"] == "object"
+                  assert "oneOf" not in selector_schema
+                  assert "discriminator" not in selector_schema
+
+                  result = await client.call_tool(
+                      "law_reference_bundle",
+                      {
+                          "selector": {"mode": "current", "law_id": "1747"},
+                          "text_mode": "graph_only",
+                          "focus": {"targets": [{"article": 3}], "max_depth": 1},
+                      },
+                  )
+                  assert result.is_error is False, result
+                  body = result.structured_content
+                  assert body["status"] == "OK"
+                  assert int(body["source"]["law_id"]) == 1747
+                  assert body["coverage"]["body_scan"] == "COMPLETE_FOR_POLICY"
+                  assert len(upstream.attempts) == 2
+                  print({
+                      "law": body["source"]["title"],
+                      "articles": body["coverage"]["counts"]["document_articles"],
+                      "edges": body["coverage"]["counts"]["reference_edges"],
+                      "attempts": len(upstream.attempts),
+                  })
+
+          asyncio.run(main())
           PY
