@@ -79,3 +79,51 @@ def test_mcp_wire_accepts_valid_current_selector_and_reaches_provider():
             ]
 
     asyncio.run(run())
+
+
+def test_mcp_wire_rejects_invalid_version_selector_before_provider_io():
+    async def run() -> None:
+        upstream = PairFixtureClient()
+        server = create_server(upstream)
+        async with Client(server) as client:
+            result = await client.call_tool(
+                "law_reference_bundle",
+                {
+                    "selector": {
+                        "mode": "version",
+                        "mst": "283839",
+                        "effective_date": "20260911"
+                    },
+                    "text_mode": "graph_only",
+                },
+            )
+            assert not result.is_error
+            assert result.structured_content["status"] == "INVALID_INPUT"
+            assert "expected_law_key or expected_response_sha256" in result.structured_content["detail"]
+            assert upstream.calls == []
+
+    asyncio.run(run())
+
+
+def test_mcp_wire_rejects_unknown_selector_field_before_provider_io():
+    async def run() -> None:
+        upstream = PairFixtureClient()
+        server = create_server(upstream)
+        async with Client(server) as client:
+            result = await client.call_tool(
+                "law_reference_bundle",
+                {
+                    "selector": {
+                        "mode": "current",
+                        "law_id": "011357",
+                        "as_of": "20260911"
+                    },
+                    "text_mode": "graph_only",
+                },
+            )
+            assert not result.is_error
+            assert result.structured_content["status"] == "INVALID_INPUT"
+            assert "accepts only mode and law_id" in result.structured_content["detail"]
+            assert upstream.calls == []
+
+    asyncio.run(run())
