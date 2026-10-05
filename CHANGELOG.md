@@ -1,3 +1,13 @@
+# 4.9.1 — 2026-10-06
+
+- 국가법령정보 Open API의 실패 응답을 정상 빈 데이터로 보이게 만들 수 있던 오류 처리를 수정했습니다.
+- HTTP 200이어도 제공처가 명시한 실패(`resultCode != 00`, `resultMsg=fail`, 오류용 `Response` envelope)는 `ProviderResponseError`로 처리합니다.
+- MCP 계층에서는 이 오류를 성공 객체로 감싸지 않고 SDK의 `ToolError`로 전달하여 `is_error=true`가 유지됩니다.
+- 오류 원인은 MCP가 별도 분류·재작성하지 않습니다. 인증값 `OC`만 가린 뒤 제공처의 원문 오류 XML을 `UPSTREAM_RESPONSE`로 그대로 전달합니다.
+- 검색 응답은 예상 root와 `totalCnt`를 검증하므로 malformed/error XML이 `status=OK, rows=[]`로 축약되지 않습니다. 정상 `totalCnt=0` 검색은 계속 성공입니다.
+- `context_packet` 내부에서도 provider transport 오류를 PARTIAL/EMPTY로 삼키지 않고 상위 MCP tool error까지 전파합니다.
+- 실제 공개 API에서 잘못된 인증값을 사용해 `<Response><result>사용자 정보 검증에 실패...</result><msg>...</msg></Response>` 형상을 재현하고 회귀시험으로 고정했습니다.
+
 # 4.9.0 — 2026-10-05
 
 - `law_reference_bundle`을 추가했습니다. 법령 전체 `eflaw` 본문과 `lsDelegated`를 문서당 한 번씩 조회하고, 본문 명시 조문참조와 제공처 관측의 합집합으로 outgoing 및 같은 문서 reverse index를 만듭니다.
