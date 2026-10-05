@@ -90,16 +90,19 @@ def test_truncated_xml_is_parse_error_and_retryable():
         assert err.retryable is True
 
 
-def test_wrong_root_is_unexpected_root_not_retryable():
+def test_explicit_error_root_is_provider_error_not_retryable():
+    payload = "<에러><메시지>없음</메시지></에러>"
     with pytest.raises(ProviderResponseError) as exc_info:
-        _parse_eflaw("<에러><메시지>없음</메시지></에러>")
-    assert exc_info.value.error_code == "UNEXPECTED_ROOT"
+        _parse_eflaw(payload)
+    assert exc_info.value.error_code == "PROVIDER_DECLARED_ERROR"
     assert exc_info.value.retryable is False
+    assert exc_info.value.provider_response == payload
 
     with pytest.raises(ProviderResponseError) as exc_info:
-        parse_lsdelegated_xml("<에러><메시지>없음</메시지></에러>")
-    assert exc_info.value.error_code == "UNEXPECTED_ROOT"
+        parse_lsdelegated_xml(payload)
+    assert exc_info.value.error_code == "PROVIDER_DECLARED_ERROR"
     assert exc_info.value.retryable is False
+    assert exc_info.value.provider_response == payload
 
 
 def test_missing_basic_info_is_missing_structure():
