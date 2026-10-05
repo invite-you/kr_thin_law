@@ -107,24 +107,12 @@ def create_server(client: Any) -> MCPServer:
             result = operation()
             result.setdefault("execution_mode", "FIXTURE_REPLAY" if isinstance(client, FixtureClient) else "LIVE")
             return result
-        except ProviderResponseError as exc:
-            result: dict[str, Any] = {
-                "status": "PROVIDER_ERROR",
-                "error_code": exc.error_code,
-                "detail": exc.detail,
-                "retryable": exc.retryable,
-                "candidates": exc.candidates,
-                "support_eligible": False,
-            }
-            if exc.http_status is not None:
-                result["http_status"] = exc.http_status
-            if exc.provider_code or exc.provider_message or exc.provider_fields:
-                result["provider_error"] = {
-                    "code": exc.provider_code,
-                    "message": exc.provider_message,
-                    "fields": exc.provider_fields,
-                }
-            return result
+        except ProviderResponseError:
+            # Transport/provider failures are real MCP tool errors. Do not turn
+            # them into a successful tool result carrying an error-shaped dict.
+            # The exception message retains the credential-redacted upstream
+            # response so callers receive the provider's reason verbatim.
+            raise
         except ValueError as exc:
             return {"status": "INVALID_INPUT", "detail": str(exc), "support_eligible": False}
 
