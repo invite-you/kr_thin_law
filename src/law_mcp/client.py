@@ -6,6 +6,7 @@ Credentials are added only to the outbound request, never to the capture ledger.
 from __future__ import annotations
 
 import hashlib
+import http.client
 import json
 import math
 import os
@@ -99,9 +100,22 @@ class OfficialClient:
                 started = time.monotonic()
                 status = None
                 try:
-                    with self.opener(request, timeout=self.timeout) as response:
-                        status = getattr(response, "status", 200)
-                        raw = response.read(self.max_bytes + 1)
+                    try:
+                        with self.opener(request, timeout=self.timeout) as response:
+                            status = getattr(response, "status", 200)
+                            raw = response.read(self.max_bytes + 1)
+                    except urllib.error.HTTPError as exc:
+                        status = exc.code
+                        with exc:
+                            raw = exc.read(self.max_bytes + 1)
+                        raw = _redact_credential(raw, self.oc)
+                        raise ProviderResponseError(
+                            "HTTP_ERROR",
+                            f"Official service returned HTTP {exc.code}",
+                            retryable=exc.code in {408, 429, 500, 502, 503, 504},
+                            http_status=exc.code,
+                            provider_response=raw.decode("utf-8", errors="replace"),
+                        ) from exc
                     # Provider payloads can echo OC inside links. Redact before
                     # any validation error is constructed so passthrough errors
                     # never expose the credential.
@@ -120,18 +134,9 @@ class OfficialClient:
                             retryable=True,
                             provider_response=raw.decode("utf-8", errors="replace"),
                         ) from exc
-                except urllib.error.HTTPError as exc:
-                    status = exc.code
-                    raw = exc.read(self.max_bytes + 1)
-                    raw = _redact_credential(raw, self.oc)
-                    error = ProviderResponseError(
-                        "HTTP_ERROR",
-                        f"Official service returned HTTP {exc.code}",
-                        retryable=exc.code in {408, 429, 500, 502, 503, 504},
-                        http_status=exc.code,
-                        provider_response=raw.decode("utf-8", errors="replace"),
-                    )
-                except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                except (urllib.error.URLError, OSError, http.client.HTTPException) as exc:
+                    if isinstance(exc, http.client.IncompleteRead):
+                        raw = _redact_credential(exc.partial, self.oc)
                     # Exception messages can contain the credential-bearing URL.
                     error = ProviderResponseError(
                         "TRANSPORT_ERROR", f"Official service transport failed ({type(exc).__name__})",

@@ -185,7 +185,6 @@ def project_article(
         "effective_date": str(
             fields.get("시행일자")
             or dates.get("시행일자")
-            or effective_date
             or ""
         ),
         "article_effective_date_text": str(
@@ -400,7 +399,7 @@ def eflaw_source(root: ET.Element, basic: ET.Element, *, mst: str, effective_dat
         ),
         "promulgation_date": _text(basic, "공포일자"),
         "promulgation_number": _text(basic, "공포번호"),
-        "effective_date": _text(basic, "시행일자") or str(effective_date or ""),
+        "effective_date": _text(basic, "시행일자"),
         "revision_type": _text(basic, "제개정구분"),
         "article_effective_date_text": _text(basic, "조문시행일자문자열"),
         "annex_effective_date_text": _text(basic, "별표시행일자문자열"),

@@ -5,7 +5,11 @@ Historical review records remain in the original local project.
 from __future__ import annotations
 
 import hashlib
+import subprocess
+import sys
 from pathlib import Path
+
+import pytest
 
 from law_mcp.capture_ledger import CaptureLedger
 from law_mcp.card_source import fetch_article, fetch_references, parse_eflaw_article_xml
@@ -52,6 +56,69 @@ def test_tc_prov_003_first_seen_survives_reload(tmp_path):
     assert again["first_seen"] == "2026-01-01T00:00:00+00:00"
     assert again["observation_count"] == 2
     assert reloaded.seen(again["response_sha256"])["first_seen"] == "2026-01-01T00:00:00+00:00"
+
+
+def test_independent_ledgers_preserve_rows_and_first_observation(tmp_path):
+    path = tmp_path / "ledger.jsonl"
+    first, second = CaptureLedger(path), CaptureLedger(path)
+    original = first.record(url="u", request={}, raw=b"one", retrieved_at="2026-01-01")
+    second.record(url="u", request={}, raw=b"two", retrieved_at="2026-01-02")
+    repeated = second.record(url="u", request={}, raw=b"one", retrieved_at="2026-01-03")
+    assert repeated["first_seen"] == original["first_seen"]
+    assert repeated["observation_count"] == 2
+    assert len(first.rows()) == len(CaptureLedger(path).rows()) == 2
+
+
+def test_multiple_processes_preserve_all_capture_observations(tmp_path):
+    path = tmp_path / "ledger.jsonl"
+    gate = tmp_path / "start"
+    ledger = CaptureLedger(path)
+    script = """
+import sys, time
+from pathlib import Path
+from law_mcp.capture_ledger import CaptureLedger
+ledger = CaptureLedger(sys.argv[1])
+gate = Path(sys.argv[3])
+while not gate.exists():
+    time.sleep(0.01)
+for _ in range(10):
+    ledger.record(url='u', request={}, raw=b'shared')
+    ledger.record(url='u', request={}, raw=sys.argv[2].encode())
+"""
+    workers = [subprocess.Popen([sys.executable, "-c", script, str(path), str(i), str(gate)],
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+               for i in range(4)]
+    try:
+        gate.touch()
+        for worker in workers:
+            _, stderr = worker.communicate(timeout=30)
+            assert worker.returncode == 0, stderr.decode("utf-8", errors="replace")
+    finally:
+        for worker in workers:
+            if worker.poll() is None:
+                worker.kill()
+                worker.wait()
+    assert len(ledger.rows()) == 5
+    assert ledger.seen(hashlib.sha256(b"shared").hexdigest())["observation_count"] == 40
+    assert all(ledger.seen(hashlib.sha256(str(i).encode()).hexdigest())["observation_count"] == 10
+               for i in range(4))
+
+
+def test_failed_ledger_replacement_preserves_previous_file(tmp_path, monkeypatch):
+    path = tmp_path / "ledger.jsonl"
+    ledger = CaptureLedger(path)
+    ledger.record(url="u", request={}, raw=b"original")
+    original = path.read_bytes()
+
+    def fail_replace(self, target):
+        raise OSError("simulated replacement failure")
+
+    monkeypatch.setattr(Path, "replace", fail_replace)
+    with pytest.raises(OSError, match="replacement failure"):
+        ledger.record(url="u", request={}, raw=b"new")
+    assert path.read_bytes() == original
+    assert len(CaptureLedger(path).rows()) == 1
+    assert len(list(tmp_path.glob("ledger.jsonl.*"))) == 1  # Only the lock file remains.
 
 
 # ------------------------------------------------------------ P1-C clock

@@ -12,6 +12,7 @@ from law_mcp.reference_bundle import (
     fetch_law_reference_bundle,
     focused_reverse_paths,
 )
+from law_mcp.card_source import ProviderResponseError
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -142,6 +143,17 @@ def test_version_selector_accepts_response_hash_as_proof():
         text_mode="graph_only",
     )
     assert out["status"] == "OK"
+
+
+def test_missing_provider_effective_date_is_not_filled_from_selector():
+    body = (FIX / "eflaw_full_283839_pipa.xml").read_bytes().replace(
+        "<시행일자>20260911</시행일자>".encode("utf-8"), b""
+    )
+    assert "<시행일자>".encode("utf-8") not in body
+    client = PairFixtureClient(body, (FIX / "lsDelegated_283839_pipa.xml").read_bytes())
+    with pytest.raises(ProviderResponseError, match="EFFECTIVE_DATE_MISMATCH"):
+        fetch_law_reference_bundle(client, selector=_version_selector())
+    assert len(client.calls) == 1
 
 
 def test_text_modes_do_not_repeat_full_document_unless_requested():

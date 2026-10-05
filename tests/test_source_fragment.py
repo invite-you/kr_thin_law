@@ -46,6 +46,27 @@ def _binding(**changes):
     return result
 
 
+@pytest.mark.parametrize("family,id_tag,title_tag,id_param,root", [
+    ("admin_rule", "행정규칙일련번호", "행정규칙명", "ID", "AdmRulService"),
+    ("ordinance", "자치법규일련번호", "자치법규명", "MST", "OrdinService"),
+])
+@pytest.mark.parametrize("content_tag", ["제개정이유내용", "개정문내용"])
+def test_explanatory_or_amendment_text_alone_is_not_consolidated_body(
+    family, id_tag, title_tag, id_param, root, content_tag,
+):
+    xml = (f"<{root}><{id_tag}>9001</{id_tag}><{title_tag}>시험</{title_tag}>"
+           f"<시행일자>20260401</시행일자><{content_tag}>설명만 있음</{content_tag}></{root}>")
+    result = fetch_source_fragment(FakeClient([xml.encode("utf-8")]), api_family=family,
+                                   observed_identity=None,
+                                   version_binding=_binding(provider_id_param=id_param))
+    assert result["status"] == "PROVIDER_STRUCTURE_MISSING"
+    assert result["support_eligible"] is False
+    assert result["source_completeness"]["complete"] is False
+    assert content_tag in result["meta"]["raw_xml"]
+    assert any(node["provider_tag"] == content_tag
+               for node in result["provider_tree"]["children"])
+
+
 def test_p0_admin_rule_contract_and_raw_provenance():
     client = FakeClient([_provider_xml()])
     result = fetch_source_fragment(client, api_family="admin_rule", observed_identity="old-observed",
