@@ -77,14 +77,11 @@ def test_live_lawgo_response_envelope_is_provider_error_not_success_empty():
     assert err.error_code == "PROVIDER_DECLARED_ERROR"
     assert err.http_status == 200
     assert err.retryable is False
-    assert "사용자 정보 검증에 실패" in err.provider_message
-    assert "IP주소 및 도메인주소" in err.provider_message
-    assert err.provider_fields["result"].startswith("사용자 정보 검증")
-    assert err.provider_fields["msg"].startswith("OPEN API 호출")
     assert err.provider_response == LIVE_AUTH_FAILURE.decode("utf-8")
+    assert "사용자 정보 검증에 실패" in str(err)
+    assert "IP주소 및 도메인주소" in str(err)
     assert client.attempts[0]["status"] == "PROVIDER_DECLARED_ERROR"
     assert client.attempts[0]["http_status"] == 200
-    assert "provider_message" in client.attempts[0]
 
 
 @pytest.mark.parametrize("url", [SEARCH_URL, SERVICE_URL])
@@ -108,8 +105,9 @@ def test_documented_resultcode_failure_is_not_empty_search_success():
         )
     err = caught.value
     assert err.error_code == "PROVIDER_DECLARED_ERROR"
-    assert err.provider_code == "01"
-    assert err.provider_message == "fail"
+    assert err.provider_response == DOCUMENTED_SEARCH_FAILURE.decode("utf-8")
+    assert "<resultCode>01</resultCode>" in str(err)
+    assert "<resultMsg>fail</resultMsg>" in str(err)
 
 
 def test_legitimate_zero_result_search_remains_success():
@@ -154,7 +152,8 @@ def test_direct_parsers_also_preserve_provider_declared_failure(parse):
     with pytest.raises(ProviderResponseError) as caught:
         parse(LIVE_AUTH_FAILURE)
     assert caught.value.error_code == "PROVIDER_DECLARED_ERROR"
-    assert "IP주소 및 도메인주소" in caught.value.provider_message
+    assert caught.value.provider_response == LIVE_AUTH_FAILURE.decode("utf-8")
+    assert "IP주소 및 도메인주소" in str(caught.value)
 
 
 def test_http_error_keeps_http_status_and_provider_body_cause():
@@ -177,8 +176,8 @@ def test_http_error_keeps_http_status_and_provider_body_cause():
     assert err.error_code == "HTTP_ERROR"
     assert err.http_status == 503
     assert err.retryable is True
-    assert "사용자 정보 검증에 실패" in err.provider_message
-    assert err.provider_fields["msg"].startswith("OPEN API 호출")
+    assert err.provider_response == LIVE_AUTH_FAILURE.decode("utf-8")
+    assert "사용자 정보 검증에 실패" in str(err)
 
 
 def test_context_producer_does_not_swallow_provider_failure():
