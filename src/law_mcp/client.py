@@ -26,6 +26,24 @@ from .card_source import ProviderResponseError, SEARCH_URL, SERVICE_URL, _requir
 ALLOWED_URLS = (SERVICE_URL, SEARCH_URL)
 
 
+def _redact_credential(raw: bytes, credential: str) -> bytes:
+    """Redact the known OC value from literal or URL-encoded echoes."""
+    if not credential:
+        return raw
+    variants = {
+        credential.encode("utf-8"),
+        urllib.parse.quote(credential, safe="").encode("utf-8"),
+        urllib.parse.quote_plus(credential, safe="").encode("utf-8"),
+    }
+    prefixes = (b"OC=", b"OC%3D", b"OC%3d", b"OC%253D", b"OC%253d")
+    out = raw
+    for prefix in prefixes:
+        replacement = prefix + b"REDACTED"
+        for value in variants:
+            out = out.replace(prefix + value, replacement)
+    return out
+
+
 class OfficialClient:
     """Read-only official source client with a bounded, observable retry policy."""
 
@@ -87,10 +105,7 @@ class OfficialClient:
                     # Provider payloads can echo OC inside links. Redact before
                     # any validation error is constructed so passthrough errors
                     # never expose the credential.
-                    raw = raw.replace(
-                        b"OC=" + self.oc.encode("utf-8"),
-                        b"OC=REDACTED",
-                    )
+                    raw = _redact_credential(raw, self.oc)
                     if len(raw) > self.max_bytes:
                         raise ProviderResponseError(
                             "RESPONSE_TOO_LARGE", "Response exceeds the capture size limit", retryable=False
@@ -108,10 +123,7 @@ class OfficialClient:
                 except urllib.error.HTTPError as exc:
                     status = exc.code
                     raw = exc.read(self.max_bytes + 1)
-                    raw = raw.replace(
-                        b"OC=" + self.oc.encode("utf-8"),
-                        b"OC=REDACTED",
-                    )
+                    raw = _redact_credential(raw, self.oc)
                     error = ProviderResponseError(
                         "HTTP_ERROR",
                         f"Official service returned HTTP {exc.code}",
