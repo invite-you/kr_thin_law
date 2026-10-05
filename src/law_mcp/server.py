@@ -15,13 +15,14 @@ from .admin_article import fetch_admin_rule_articles
 from .context_producer import ContextProducer
 from .decision import fetch_decision
 from .law_supplement import fetch_law_supplements
+from .reference_bundle import fetch_law_reference_bundle
 from .search import search_documents
 from .source_fragment import fetch_source_fragment
 
 
 def create_server(client: Any) -> MCPServer:
     server = MCPServer(
-        "legal-thin-mcp", version="4.8.0",
+        "legal-thin-mcp", version="4.9.0",
         instructions=(
             "공식 원문과 판본이 확인된 문맥을 조회합니다. 법적 의미, 필요한 참조의 선택, "
             "과거 판본 해석과 최종 의미 판단은 호출자가 수행합니다. READY는 원문 전달 상태입니다."
@@ -71,6 +72,22 @@ def create_server(client: Any) -> MCPServer:
             result["support_eligible"] = False
             return result
         return guarded(retrieve)
+
+    @server.tool()
+    def law_reference_bundle(
+        selector: dict[str, Any],
+        text_mode: str = "referenced_units",
+        focus: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """법령 한 판본의 공식 참조관측과 본문 명시 조문참조를 합쳐 양방향 색인을 돌려줍니다.
+
+        current selector는 law_id로 제공처 현행본을 조회합니다. version selector는 MST,
+        시행일과 독립 판본 증명값을 요구합니다. 역인용 완전성은 같은 문서 범위에만 한정되며,
+        법적 의미ㆍDependencyㆍ전국 incoming을 판단하지 않습니다.
+        """
+        return guarded(lambda: fetch_law_reference_bundle(
+            client, selector=selector, text_mode=text_mode, focus=focus,
+        ))
 
     @server.tool()
     def source_fragment(
