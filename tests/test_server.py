@@ -19,7 +19,8 @@ def test_real_mcp_protocol_tools_and_source_guard():
         async with Client(server) as client:
             result = await client.list_tools()
             assert {tool.name for tool in result.tools} == {
-                "law_article", "law_references", "source_fragment", "context_packet", "validate_context_packet",
+                "law_article", "law_references", "law_reference_bundle", "source_fragment",
+                "context_packet", "validate_context_packet",
                 "law_search", "admin_rule_article", "law_supplements", "decision_document",
             }
             result = await client.call_tool("law_article", {
