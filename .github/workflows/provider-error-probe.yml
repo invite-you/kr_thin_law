@@ -27,6 +27,8 @@ jobs:
               {"OC":"test","target":"law","type":"XML","query":"자동차관리법","page":"0"},
               {"OC":"test","target":"definitely_invalid_target","type":"XML","query":"x"},
               {"OC":"test","target":"law","type":"XML","query":"자동차관리법","display":"-1"},
+              {"OC":"definitely-invalid-credential","target":"law","type":"XML","query":"자동차관리법"},
+              {"target":"law","type":"XML","query":"자동차관리법"},
           ]
           for i, params in enumerate(cases, 1):
               url = base + "?" + urllib.parse.urlencode(params)
