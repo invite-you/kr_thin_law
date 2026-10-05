@@ -1,0 +1,88 @@
+name: Live version selector probe
+
+on:
+  push:
+    branches:
+      - work/selector-wire-4.9.2
+
+permissions:
+  contents: read
+
+jobs:
+  live-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e .
+      - name: Resolve current then replay exact version through MCP wire
+        env:
+          LAW_API_OC: test
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client
+          from law_mcp.client import OfficialClient
+          from law_mcp.server import create_server
+
+          async def main():
+              upstream = OfficialClient(
+                  oc="test",
+                  capture_dir=None,
+                  timeout=20,
+                  max_attempts=2,
+              )
+              server = create_server(upstream)
+              async with Client(server) as client:
+                  current = await client.call_tool(
+                      "law_reference_bundle",
+                      {
+                          "selector": {"mode": "current", "law_id": "1747"},
+                          "text_mode": "graph_only",
+                      },
+                  )
+                  assert current.is_error is False, current
+                  body = current.structured_content
+                  version = body["version"]
+                  mst = version["mst_observed_from_lsDelegated"]
+                  effective_date = version["effective_date"].replace("-", "")
+                  law_key = version["law_key"]
+                  law_id = body["source"]["law_id"]
+                  assert mst and effective_date and law_key and law_id, version
+
+                  before = len(upstream.attempts)
+                  exact = await client.call_tool(
+                      "law_reference_bundle",
+                      {
+                          "selector": {
+                              "mode": "version",
+                              "mst": mst,
+                              "effective_date": effective_date,
+                              "expected_law_key": law_key,
+                              "expected_law_id": law_id,
+                          },
+                          "text_mode": "graph_only",
+                      },
+                  )
+                  assert exact.is_error is False, exact
+                  exact_body = exact.structured_content
+                  assert exact_body["status"] == "OK"
+                  assert exact_body["version"]["selector_mode"] == "version"
+                  assert exact_body["version"]["mst"] == mst
+                  assert exact_body["version"]["effective_date"].replace("-", "") == effective_date
+                  assert exact_body["version"]["law_key"] == law_key
+                  assert int(exact_body["source"]["law_id"]) == int(law_id)
+                  assert len(upstream.attempts) - before == 2
+                  print({
+                      "law": exact_body["source"]["title"],
+                      "mst": mst,
+                      "effective_date": effective_date,
+                      "law_key": law_key,
+                      "new_attempts": len(upstream.attempts) - before,
+                  })
+
+          asyncio.run(main())
+          PY
