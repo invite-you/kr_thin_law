@@ -112,6 +112,12 @@ def _selector(selector: dict[str, Any]) -> dict[str, Any]:
     raise ValueError("selector.mode must be current or version")
 
 
+def _same_numeric_id(left: Any, right: Any) -> bool:
+    a = str(left or "").strip()
+    b = str(right or "").strip()
+    return bool(a and b and a.isdigit() and b.isdigit() and int(a) == int(b))
+
+
 def _article_key(article: Any, branch: Any = None) -> str:
     number = str(int(str(article).strip()))
     br = _norm_branch(branch)
@@ -210,7 +216,7 @@ def _verify_document(
     actual_key = str(source.get("law_key") or "")
 
     if selector["mode"] == "current":
-        if actual_law_id != selector["law_id"]:
+        if not _same_numeric_id(actual_law_id, selector["law_id"]):
             raise ProviderResponseError(
                 "PROVIDER_IDENTITY_MISMATCH",
                 "eflaw current response law_id does not match selector",
@@ -218,7 +224,9 @@ def _verify_document(
             )
         return
 
-    if selector.get("expected_law_id") and actual_law_id != selector["expected_law_id"]:
+    if selector.get("expected_law_id") and not _same_numeric_id(
+        actual_law_id, selector["expected_law_id"]
+    ):
         raise ProviderResponseError(
             "PROVIDER_IDENTITY_MISMATCH",
             "eflaw response law_id does not match expected_law_id",
@@ -655,7 +663,7 @@ def fetch_law_reference_bundle(
     if (
         relation_source.get("law_id")
         and body_source.get("law_id")
-        and str(relation_source["law_id"]) != str(body_source["law_id"])
+        and not _same_numeric_id(relation_source["law_id"], body_source["law_id"])
     ):
         raise ProviderResponseError(
             "PROVIDER_IDENTITY_MISMATCH",
