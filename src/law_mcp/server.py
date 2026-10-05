@@ -96,7 +96,7 @@ ReferenceTextMode = Literal["graph_only", "referenced_units", "full_document"]
 
 def create_server(client: Any) -> MCPServer:
     server = MCPServer(
-        "legal-thin-mcp", version="4.9.0",
+        "legal-thin-mcp", version="4.9.1",
         instructions=(
             "공식 원문과 판본이 확인된 문맥을 조회합니다. 법적 의미, 필요한 참조의 선택, "
             "과거 판본 해석과 최종 의미 판단은 호출자가 수행합니다. READY는 원문 전달 상태입니다."
