@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Annotated, Any, Callable, Literal
 
 from mcp.server import MCPServer
+from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, ConfigDict, Field
 
 from .card_source import ProviderResponseError, fetch_references
@@ -107,12 +108,12 @@ def create_server(client: Any) -> MCPServer:
             result = operation()
             result.setdefault("execution_mode", "FIXTURE_REPLAY" if isinstance(client, FixtureClient) else "LIVE")
             return result
-        except ProviderResponseError:
-            # Transport/provider failures are real MCP tool errors. Do not turn
-            # them into a successful tool result carrying an error-shaped dict.
-            # The exception message retains the credential-redacted upstream
-            # response so callers receive the provider's reason verbatim.
-            raise
+        except ProviderResponseError as exc:
+            # MCP SDK preserves ToolError text on the wire with is_error=true.
+            # Passing the ProviderResponseError text through here keeps the
+            # credential-redacted upstream response intact instead of converting
+            # it to a successful, empty-looking result or a generic crash.
+            raise ToolError(str(exc)) from exc
         except ValueError as exc:
             return {"status": "INVALID_INPUT", "detail": str(exc), "support_eligible": False}
 
