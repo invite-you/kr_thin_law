@@ -26,8 +26,9 @@ def test_real_mcp_protocol_tools_and_source_guard():
             bundle_tool = next(tool for tool in result.tools if tool.name == "law_reference_bundle")
             bundle_schema = bundle_tool.input_schema
             selector_schema = bundle_schema["properties"]["selector"]
-            assert selector_schema["discriminator"]["propertyName"] == "mode"
-            assert len(selector_schema["oneOf"]) == 2
+            assert selector_schema["type"] == "object"
+            assert "oneOf" not in selector_schema
+            assert "discriminator" not in selector_schema
             assert bundle_schema["properties"]["text_mode"]["enum"] == [
                 "graph_only", "referenced_units", "full_document",
             ]
