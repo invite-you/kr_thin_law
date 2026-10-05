@@ -24,7 +24,7 @@ def test_real_mcp_protocol_tools_and_source_guard():
                 "law_search", "admin_rule_article", "law_supplements", "decision_document",
             }
             bundle_tool = next(tool for tool in result.tools if tool.name == "law_reference_bundle")
-            bundle_schema = bundle_tool.inputSchema
+            bundle_schema = bundle_tool.input_schema
             selector_schema = bundle_schema["properties"]["selector"]
             assert selector_schema["discriminator"]["propertyName"] == "mode"
             assert len(selector_schema["oneOf"]) == 2
