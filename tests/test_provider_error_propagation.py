@@ -179,7 +179,7 @@ def test_http_error_keeps_http_status_and_provider_body_cause():
     assert err.provider_fields["msg"].startswith("OPEN API 호출")
 
 
-def test_mcp_returns_provider_error_cause_end_to_end():
+def test_mcp_propagates_provider_failure_as_real_tool_error_with_raw_response():
     async def run():
         client = OfficialClient(
             "definitely-invalid-credential",
@@ -192,16 +192,16 @@ def test_mcp_returns_provider_error_cause_end_to_end():
                 "law_search",
                 {"target": "eflaw", "query": "자동차관리법"},
             )
-            assert not result.is_error
-            body = result.structured_content
-            assert body["status"] == "PROVIDER_ERROR"
-            assert body["error_code"] == "PROVIDER_DECLARED_ERROR"
-            assert body["http_status"] == 200
-            assert body["support_eligible"] is False
-            assert body["provider_error"]["code"] == ""
-            assert "사용자 정보 검증에 실패" in body["provider_error"]["message"]
-            assert "IP주소 및 도메인주소" in body["provider_error"]["message"]
-            assert body["provider_error"]["fields"]["result"].startswith("사용자 정보 검증")
-            assert "rows" not in body
+            assert result.is_error
+            rendered = "\n".join(
+                getattr(item, "text", str(item))
+                for item in result.content
+            )
+            assert "PROVIDER_DECLARED_ERROR" in rendered
+            assert "UPSTREAM_RESPONSE:" in rendered
+            assert "<Response>" in rendered
+            assert "<result>사용자 정보 검증에 실패하였습니다.</result>" in rendered
+            assert "IP주소 및 도메인주소를 등록해 주세요." in rendered
+            assert "rows" not in rendered
 
     asyncio.run(run())
