@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  offline:
+    name: offline-py${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install
+        run: python -m pip install -e ".[dev]"
+      - name: Tests
+        run: python -m pytest -q
+      - name: Ruff
+        run: python -m ruff check src/law_mcp tests
+      - name: Mypy
+        run: python -m mypy src/law_mcp
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build tooling
+        run: python -m pip install build
+      - name: Build distributions
+        run: python -m build
+
+  public-api-smoke:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: python -m pip install -e .
+      - name: Official public sample bundle smoke
+        env:
+          LAW_API_OC: test
+        run: |
+          python - <<'PY'
+          from law_mcp.client import OfficialClient
+          from law_mcp.reference_bundle import fetch_law_reference_bundle
+
+          client = OfficialClient(
+              oc="test",
+              capture_dir=None,
+              timeout=20,
+              max_attempts=2,
+          )
+          result = fetch_law_reference_bundle(
+              client,
+              selector={"mode": "current", "law_id": "1747"},
+              text_mode="graph_only",
+              focus={"targets": [{"article": 3}], "max_depth": 1},
+          )
+          assert result["status"] == "OK"
+          assert int(result["source"]["law_id"]) == 1747
+          assert result["coverage"]["body_scan"] == "COMPLETE_FOR_POLICY"
+          assert len(client.attempts) == 2
+          print({
+              "law": result["source"]["title"],
+              "articles": result["coverage"]["counts"]["document_articles"],
+              "edges": result["coverage"]["counts"]["reference_edges"],
+              "attempts": len(client.attempts),
+          })
+          PY
