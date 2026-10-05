@@ -29,12 +29,7 @@ def _norm_branch(value: Any) -> str:
 
 
 class ProviderResponseError(ValueError):
-    """Structured upstream/parsing failure with a machine-readable error code.
-
-    Subclasses ValueError so legacy ``except ValueError`` callers keep working.
-    ``retryable`` marks transport-level anomalies that a caller may safely
-    retry; logical mismatches (wrong root, missing article) are never retryable.
-    """
+    """Structured upstream/parsing failure with machine-readable transport metadata."""
 
     def __init__(
         self,
@@ -44,9 +39,6 @@ class ProviderResponseError(ValueError):
         retryable: bool,
         raw_preview: str = "",
         candidates: list[dict[str, Any]] | None = None,
-        provider_code: str = "",
-        provider_message: str = "",
-        provider_fields: dict[str, str] | None = None,
         http_status: int | None = None,
         provider_response: str = "",
     ) -> None:
@@ -59,9 +51,6 @@ class ProviderResponseError(ValueError):
         self.raw_preview = raw_preview
         self.detail = detail
         self.candidates = candidates or []
-        self.provider_code = str(provider_code or "")
-        self.provider_message = str(provider_message or "")
-        self.provider_fields = dict(provider_fields or {})
         self.http_status = http_status
         self.provider_response = provider_response
 
@@ -70,103 +59,34 @@ def _preview(raw: bytes, limit: int = 500) -> str:
     return raw[:limit].decode("utf-8", errors="replace")
 
 
-def _provider_declared_failure(raw: bytes) -> dict[str, Any] | None:
-    """Return a normalized provider-declared failure, if present.
+def _is_provider_error_xml(raw: bytes) -> bool:
+    """Detect explicit provider failure envelopes without interpreting their meaning.
 
-    law.go.kr search responses document resultCode=00/resultMsg=success as
-    success and resultCode=01/resultMsg=fail as failure. Authentication and
-    gateway failures can instead arrive as a well-formed XML <Response>
-    envelope. This function is intentionally narrow: it only inspects explicit
-    status/error fields and never treats a legitimate empty result set as an
-    error.
+    The original provider payload remains the canonical error detail. This only
+    distinguishes failure from a legitimate success payload, including a normal
+    zero-result search.
     """
     try:
         root = ET.fromstring(raw)
     except ET.ParseError:
-        return None
+        return False
 
     def first(tag: str) -> str:
         node = root.find(f".//{tag}")
         return (node.text or "").strip() if node is not None and node.text else ""
 
     result_code = first("resultCode")
-    result_msg = first("resultMsg")
-    msg_norm = result_msg.strip().lower()
-    declared_fail = bool(result_code and result_code not in {"0", "00"})
-    declared_fail = declared_fail or msg_norm in {"fail", "failed", "failure", "error"}
-
-    field_tags = (
-        "resultCode", "resultMsg",
-        "errMsg", "returnAuthMsg", "returnReasonCode",
-        "errorCode", "errorMessage",
-        "code", "message", "msg", "result",
-    )
-    fields = {tag: first(tag) for tag in field_tags if first(tag)}
-
-    # The provider also uses a generic <Response> envelope for auth/request
-    # failures. Treat it as an error only when it carries explicit error-ish
-    # fields; a random XML node named Response is not enough.
-    envelope_error = root.tag in {"OpenAPI_ServiceResponse", "Response"} and bool(fields)
-    cmm_error = root.find(".//cmmMsgHeader") is not None and bool(fields)
-
-    if not (declared_fail or envelope_error or cmm_error):
-        return None
-
-    provider_code = (
-        result_code
-        or fields.get("returnReasonCode", "")
-        or fields.get("errorCode", "")
-        or fields.get("code", "")
-    )
-    provider_message = (
-        result_msg
-        or fields.get("returnAuthMsg", "")
-        or fields.get("errMsg", "")
-        or fields.get("errorMessage", "")
-        or fields.get("result", "")
-        or fields.get("message", "")
-        or fields.get("msg", "")
-        or "provider declared request failure"
-    )
-    detail_parts = []
-    for value in (
-        fields.get("result", ""),
-        fields.get("msg", ""),
-        fields.get("returnAuthMsg", ""),
-        fields.get("errMsg", ""),
-        fields.get("errorMessage", ""),
-    ):
-        if value and value not in detail_parts:
-            detail_parts.append(value)
-    if detail_parts:
-        provider_message = " ".join(detail_parts)
-
-    return {
-        "provider_code": provider_code,
-        "provider_message": provider_message,
-        "provider_fields": fields,
-        "provider_root": root.tag,
-    }
-
-
-def _raise_provider_declared_failure(raw: bytes) -> None:
-    failure = _provider_declared_failure(raw)
-    if failure is None:
-        return
-    raise ProviderResponseError(
-        "PROVIDER_DECLARED_ERROR",
-        "official provider returned an error response",
-        retryable=False,
-        raw_preview=_preview(raw),
-        provider_code=failure["provider_code"],
-        provider_message=failure["provider_message"],
-        provider_fields=failure["provider_fields"],
-        provider_response=raw.decode("utf-8", errors="replace"),
-    )
+    if result_code and result_code not in {"0", "00"}:
+        return True
+    if first("resultMsg").lower() in {"fail", "failed", "failure", "error"}:
+        return True
+    if root.tag in {"Response", "OpenAPI_ServiceResponse", "Error", "Errors", "에러"}:
+        return True
+    return root.find(".//cmmMsgHeader") is not None
 
 
 def _require_xml_payload(raw: bytes) -> None:
-    """Reject known non-XML upstream payloads before ElementTree parsing."""
+    """Reject transport/provider failure payloads before domain parsing."""
     if not raw:
         raise ProviderResponseError(
             "EMPTY_RESPONSE",
@@ -182,7 +102,14 @@ def _require_xml_payload(raw: bytes) -> None:
             raw_preview=_preview(raw),
             provider_response=raw.decode("utf-8", errors="replace"),
         )
-    _raise_provider_declared_failure(raw)
+    if _is_provider_error_xml(raw):
+        raise ProviderResponseError(
+            "PROVIDER_DECLARED_ERROR",
+            "official provider returned an error response",
+            retryable=False,
+            raw_preview=_preview(raw),
+            provider_response=raw.decode("utf-8", errors="replace"),
+        )
 
 
 def _select_article(
