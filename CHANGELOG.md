@@ -1,3 +1,13 @@
+# 4.9.0 — 2026-10-05
+
+- `law_reference_bundle`을 추가했습니다. 법령 전체 `eflaw` 본문과 `lsDelegated`를 문서당 한 번씩 조회하고, 본문 명시 조문참조와 제공처 관측의 합집합으로 outgoing 및 같은 문서 reverse index를 만듭니다.
+- PIPA 현행 fixture에서 `lsDelegated`만으로는 보이지 않던 제35조의2→제29조 명시참조를 본문 채널이 보완하는 회귀테스트를 추가했습니다.
+- `법 제N조`, `같은 법 제N조`, 다른 법령명이 붙은 조문은 같은 문서 edge로 추측하지 않고 unresolved 관측으로 보존합니다.
+- current selector는 `law_id`만 받고, version selector는 `MST + 시행일 + 독립 판본 증명값`을 요구해 현재/과거 조회 의미가 섞이지 않게 했습니다.
+- `graph_only / referenced_units / full_document` 반환 모드를 추가하고, 전체 multi-hop 경로는 미리 펼치지 않으며 `focus`가 있을 때만 최대 3 hop을 계산합니다.
+- coverage에 nationwide incoming 미검색, semantic 미평가, 과거 `lsDelegated` 시간 정합성 미보장을 명시합니다.
+- GitHub Actions에서 Python 3.10/3.12 offline 회귀, ruff, mypy, build를 실행하고 공식 `OC=test` public sample live smoke를 별도 관측합니다.
+
 # 4.8.0 — 2026-10-01
 
 기존 도구의 동작과 출력은 바꾸지 않고, 검색 대상 2개와 도구 1개를 더했습니다.
