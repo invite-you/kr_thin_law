@@ -4,11 +4,10 @@ from __future__ import annotations
 import argparse
 import os
 from pathlib import Path
-from typing import Annotated, Any, Callable, Literal
+from typing import Any, Callable, Literal
 
 from mcp.server import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
-from pydantic import BaseModel, ConfigDict, Field
 
 from .card_source import ProviderResponseError, fetch_references
 from .client import FixtureClient, OfficialClient
@@ -22,77 +21,7 @@ from .search import search_documents
 from .source_fragment import fetch_source_fragment
 
 
-class _StrictInput(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-
-class CurrentLawSelector(_StrictInput):
-    mode: Literal["current"]
-    law_id: str = Field(
-        pattern=r"^\\d+$",
-        description="국가법령정보의 안정 법령 ID. 현행 조회에만 사용합니다.",
-    )
-
-
-class VersionLawSelector(_StrictInput):
-    mode: Literal["version"]
-    mst: str = Field(
-        pattern=r"^\\d+$",
-        description="조회할 정확한 법령일련번호(MST).",
-    )
-    effective_date: str = Field(
-        pattern=r"^\\d{8}$",
-        description="MST와 함께 조회할 시행일 YYYYMMDD.",
-    )
-    expected_law_key: str | None = Field(
-        default=None,
-        description=(
-            "독립적으로 확인한 공식 법령키. expected_response_sha256과 둘 중 하나는 필수입니다."
-        ),
-    )
-    expected_response_sha256: str | None = Field(
-        default=None,
-        pattern=r"^[0-9a-fA-F]{64}$",
-        description=(
-            "독립적으로 고정한 eflaw 전체 응답 SHA-256. expected_law_key와 둘 중 하나는 필수입니다."
-        ),
-    )
-    expected_law_id: str | None = Field(
-        default=None,
-        pattern=r"^\\d+$",
-        description="선택적 추가 identity guard인 안정 법령 ID.",
-    )
-
-
-LawReferenceSelector = Annotated[
-    CurrentLawSelector | VersionLawSelector,
-    Field(discriminator="mode"),
-]
-
-
-class ReferenceFocusTarget(_StrictInput):
-    article: int = Field(ge=1, description="같은 문서 역인용 경로를 펼칠 대상 조 번호.")
-    branch: int | None = Field(
-        default=None, ge=1, description="가지번호. 일반 조문이면 생략합니다."
-    )
-
-
-class ReferenceFocus(_StrictInput):
-    targets: list[ReferenceFocusTarget] = Field(
-        min_length=1,
-        max_length=20,
-        description="경로를 미리 계산할 1~20개 대상 조문.",
-    )
-    max_depth: int = Field(
-        default=2,
-        ge=1,
-        le=3,
-        description="같은 문서 reverse path 최대 깊이. 1~3만 허용합니다.",
-    )
-
-
 ReferenceTextMode = Literal["graph_only", "referenced_units", "full_document"]
-
 
 def create_server(client: Any) -> MCPServer:
     server = MCPServer(
@@ -149,9 +78,9 @@ def create_server(client: Any) -> MCPServer:
 
     @server.tool()
     def law_reference_bundle(
-        selector: LawReferenceSelector,
+        selector: dict[str, Any],
         text_mode: ReferenceTextMode = "referenced_units",
-        focus: ReferenceFocus | None = None,
+        focus: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """법령 한 판본의 공식 참조관측과 본문 명시 조문참조를 합쳐 양방향 색인을 돌려줍니다.
 
@@ -159,10 +88,8 @@ def create_server(client: Any) -> MCPServer:
         시행일과 독립 판본 증명값을 요구합니다. 역인용 완전성은 같은 문서 범위에만 한정되며,
         법적 의미ㆍDependencyㆍ전국 incoming을 판단하지 않습니다.
         """
-        selector_data = selector.model_dump(exclude_none=True)
-        focus_data = focus.model_dump(exclude_none=True) if focus is not None else None
         return guarded(lambda: fetch_law_reference_bundle(
-            client, selector=selector_data, text_mode=text_mode, focus=focus_data,
+            client, selector=selector, text_mode=text_mode, focus=focus,
         ))
 
     @server.tool()
