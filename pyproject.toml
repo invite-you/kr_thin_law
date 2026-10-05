@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "legal-thin-mcp"
-version = "4.8.0"
+version = "4.9.0"
 description = "Version-bound Korean legal source transport and explicit context assembly"
 readme = "README.md"
 requires-python = ">=3.10"
