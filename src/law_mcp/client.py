@@ -21,13 +21,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .capture_ledger import CaptureLedger
-from .card_source import (
-    ProviderResponseError,
-    SEARCH_URL,
-    SERVICE_URL,
-    _provider_declared_failure,
-    _require_xml_payload,
-)
+from .card_source import ProviderResponseError, SEARCH_URL, SERVICE_URL, _require_xml_payload
 
 ALLOWED_URLS = (SERVICE_URL, SEARCH_URL)
 
@@ -118,14 +112,10 @@ class OfficialClient:
                         b"OC=" + self.oc.encode("utf-8"),
                         b"OC=REDACTED",
                     )
-                    declared = _provider_declared_failure(raw) or {}
                     error = ProviderResponseError(
                         "HTTP_ERROR",
                         f"Official service returned HTTP {exc.code}",
                         retryable=exc.code in {408, 429, 500, 502, 503, 504},
-                        provider_code=str(declared.get("provider_code") or ""),
-                        provider_message=str(declared.get("provider_message") or ""),
-                        provider_fields=declared.get("provider_fields") or {},
                         http_status=exc.code,
                         provider_response=raw.decode("utf-8", errors="replace"),
                     )
@@ -156,10 +146,6 @@ class OfficialClient:
                 }
                 if error is not None:
                     row["detail"] = error.detail
-                    if error.provider_code:
-                        row["provider_code"] = error.provider_code
-                    if error.provider_message:
-                        row["provider_message"] = error.provider_message
                 if self.capture_dir is not None:
                     self.capture_dir.mkdir(parents=True, exist_ok=True)
                     raw_path = self.capture_dir / (row["attempt_id"] + ".xml")
