@@ -108,11 +108,23 @@ def create_server(client: Any) -> MCPServer:
             result.setdefault("execution_mode", "FIXTURE_REPLAY" if isinstance(client, FixtureClient) else "LIVE")
             return result
         except ProviderResponseError as exc:
-            return {
-                "status": "PROVIDER_ERROR", "error_code": exc.error_code,
-                "detail": exc.detail, "retryable": exc.retryable,
-                "candidates": exc.candidates, "support_eligible": False,
+            result: dict[str, Any] = {
+                "status": "PROVIDER_ERROR",
+                "error_code": exc.error_code,
+                "detail": exc.detail,
+                "retryable": exc.retryable,
+                "candidates": exc.candidates,
+                "support_eligible": False,
             }
+            if exc.http_status is not None:
+                result["http_status"] = exc.http_status
+            if exc.provider_code or exc.provider_message or exc.provider_fields:
+                result["provider_error"] = {
+                    "code": exc.provider_code,
+                    "message": exc.provider_message,
+                    "fields": exc.provider_fields,
+                }
+            return result
         except ValueError as exc:
             return {"status": "INVALID_INPUT", "detail": str(exc), "support_eligible": False}
 
