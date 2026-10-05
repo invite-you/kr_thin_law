@@ -1,0 +1,57 @@
+name: Live provider error E2E
+
+on:
+  push:
+    branches:
+      - fix/provider-error-propagation-4.9.1
+
+permissions:
+  contents: read
+
+jobs:
+  live-error-e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install 4.9.1 main
+        run: python -m pip install -e .
+      - name: Assert live invalid auth is MCP tool error with upstream body
+        run: |
+          python - <<'PY'
+          import asyncio
+          from mcp import Client
+          from law_mcp.client import OfficialClient
+          from law_mcp.server import create_server
+
+          async def main():
+              upstream = OfficialClient(
+                  oc="definitely-invalid-credential",
+                  capture_dir=None,
+                  timeout=20,
+                  max_attempts=1,
+              )
+              server = create_server(upstream)
+              async with Client(server) as client:
+                  result = await client.call_tool(
+                      "law_search",
+                      {"target": "eflaw", "query": "자동차관리법"},
+                  )
+                  assert result.is_error is True, result
+                  rendered = "\n".join(
+                      getattr(item, "text", str(item))
+                      for item in result.content
+                  )
+                  assert "UPSTREAM_RESPONSE:" in rendered, rendered
+                  assert "<Response>" in rendered, rendered
+                  assert "사용자 정보 검증에 실패" in rendered, rendered
+                  assert "status" not in (result.structured_content or {}), result.structured_content
+                  print("LIVE_ERROR_E2E_PASS")
+                  print(rendered[:1200])
+
+          asyncio.run(main())
+          PY
