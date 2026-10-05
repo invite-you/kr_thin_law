@@ -90,6 +90,13 @@ class OfficialClient:
                     with self.opener(request, timeout=self.timeout) as response:
                         status = getattr(response, "status", 200)
                         raw = response.read(self.max_bytes + 1)
+                    # Provider payloads can echo OC inside links. Redact before
+                    # any validation error is constructed so passthrough errors
+                    # never expose the credential.
+                    raw = raw.replace(
+                        b"OC=" + self.oc.encode("utf-8"),
+                        b"OC=REDACTED",
+                    )
                     if len(raw) > self.max_bytes:
                         raise ProviderResponseError(
                             "RESPONSE_TOO_LARGE", "Response exceeds the capture size limit", retryable=False
@@ -99,16 +106,19 @@ class OfficialClient:
                         ET.fromstring(raw)
                     except ET.ParseError as exc:
                         raise ProviderResponseError(
-                            "PARSE_ERROR", "Provider XML is malformed", retryable=True
+                            "PARSE_ERROR",
+                            "Provider XML is malformed",
+                            retryable=True,
+                            provider_response=raw.decode("utf-8", errors="replace"),
                         ) from exc
                 except urllib.error.HTTPError as exc:
                     status = exc.code
                     raw = exc.read(self.max_bytes + 1)
-                    safe_raw = raw.replace(
+                    raw = raw.replace(
                         b"OC=" + self.oc.encode("utf-8"),
                         b"OC=REDACTED",
                     )
-                    declared = _provider_declared_failure(safe_raw) or {}
+                    declared = _provider_declared_failure(raw) or {}
                     error = ProviderResponseError(
                         "HTTP_ERROR",
                         f"Official service returned HTTP {exc.code}",
@@ -117,6 +127,7 @@ class OfficialClient:
                         provider_message=str(declared.get("provider_message") or ""),
                         provider_fields=declared.get("provider_fields") or {},
                         http_status=exc.code,
+                        provider_response=raw.decode("utf-8", errors="replace"),
                     )
                 except (urllib.error.URLError, TimeoutError, OSError) as exc:
                     # Exception messages can contain the credential-bearing URL.
@@ -128,9 +139,7 @@ class OfficialClient:
                     if exc.http_status is None:
                         exc.http_status = status
                     error = exc
-                # Search listings echo the credential inside detail links (OC=...); never store or
-                # return it. Only the parameter form is replaced so legal text is never altered.
-                raw = raw.replace(b"OC=" + self.oc.encode("utf-8"), b"OC=REDACTED")
+                # raw has already been credential-redacted immediately after I/O.
                 row: dict[str, Any] = {
                     "attempt_id": uuid.uuid4().hex,
                     "url": url,
