@@ -72,7 +72,7 @@ class OfficialClient:
         query = urllib.parse.urlencode({**clean, "type": "XML", "OC": self.oc})
         request = urllib.request.Request(
             url + "?" + query,
-            headers={"User-Agent": "legal-thin-mcp/4.9.0", "Accept": "application/xml"},
+            headers={"User-Agent": "legal-thin-mcp/4.9.1", "Accept": "application/xml"},
         )
         with self._lock:
             for attempt in range(1, self.max_attempts + 1):
@@ -84,6 +84,13 @@ class OfficialClient:
                     with self.opener(request, timeout=self.timeout) as response:
                         status = getattr(response, "status", 200)
                         raw = response.read(self.max_bytes + 1)
+                    # Provider payloads can echo OC inside links. Redact before
+                    # any validation error is constructed so passthrough errors
+                    # never expose the credential.
+                    raw = raw.replace(
+                        b"OC=" + self.oc.encode("utf-8"),
+                        b"OC=REDACTED",
+                    )
                     if len(raw) > self.max_bytes:
                         raise ProviderResponseError(
                             "RESPONSE_TOO_LARGE", "Response exceeds the capture size limit", retryable=False
@@ -93,14 +100,24 @@ class OfficialClient:
                         ET.fromstring(raw)
                     except ET.ParseError as exc:
                         raise ProviderResponseError(
-                            "PARSE_ERROR", "Provider XML is malformed", retryable=True
+                            "PARSE_ERROR",
+                            "Provider XML is malformed",
+                            retryable=True,
+                            provider_response=raw.decode("utf-8", errors="replace"),
                         ) from exc
                 except urllib.error.HTTPError as exc:
                     status = exc.code
                     raw = exc.read(self.max_bytes + 1)
+                    raw = raw.replace(
+                        b"OC=" + self.oc.encode("utf-8"),
+                        b"OC=REDACTED",
+                    )
                     error = ProviderResponseError(
-                        "HTTP_ERROR", f"Official service returned HTTP {exc.code}",
+                        "HTTP_ERROR",
+                        f"Official service returned HTTP {exc.code}",
                         retryable=exc.code in {408, 429, 500, 502, 503, 504},
+                        http_status=exc.code,
+                        provider_response=raw.decode("utf-8", errors="replace"),
                     )
                 except (urllib.error.URLError, TimeoutError, OSError) as exc:
                     # Exception messages can contain the credential-bearing URL.
@@ -109,10 +126,10 @@ class OfficialClient:
                         retryable=True,
                     )
                 except ProviderResponseError as exc:
+                    if exc.http_status is None:
+                        exc.http_status = status
                     error = exc
-                # Search listings echo the credential inside detail links (OC=...); never store or
-                # return it. Only the parameter form is replaced so legal text is never altered.
-                raw = raw.replace(b"OC=" + self.oc.encode("utf-8"), b"OC=REDACTED")
+                # raw has already been credential-redacted immediately after I/O.
                 row: dict[str, Any] = {
                     "attempt_id": uuid.uuid4().hex,
                     "url": url,
@@ -127,6 +144,8 @@ class OfficialClient:
                     "status": error.error_code if error else "OK",
                     "retryable": error.retryable if error else False,
                 }
+                if error is not None:
+                    row["detail"] = error.detail
                 if self.capture_dir is not None:
                     self.capture_dir.mkdir(parents=True, exist_ok=True)
                     raw_path = self.capture_dir / (row["attempt_id"] + ".xml")

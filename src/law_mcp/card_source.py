@@ -29,12 +29,7 @@ def _norm_branch(value: Any) -> str:
 
 
 class ProviderResponseError(ValueError):
-    """Structured upstream/parsing failure with a machine-readable error code.
-
-    Subclasses ValueError so legacy ``except ValueError`` callers keep working.
-    ``retryable`` marks transport-level anomalies that a caller may safely
-    retry; logical mismatches (wrong root, missing article) are never retryable.
-    """
+    """Structured upstream/parsing failure with machine-readable transport metadata."""
 
     def __init__(
         self,
@@ -44,21 +39,54 @@ class ProviderResponseError(ValueError):
         retryable: bool,
         raw_preview: str = "",
         candidates: list[dict[str, Any]] | None = None,
+        http_status: int | None = None,
+        provider_response: str = "",
     ) -> None:
-        super().__init__(f"[{error_code}] {detail}")
+        message = f"[{error_code}] {detail}"
+        if provider_response:
+            message += "\nUPSTREAM_RESPONSE:\n" + provider_response
+        super().__init__(message)
         self.error_code = error_code
         self.retryable = retryable
         self.raw_preview = raw_preview
         self.detail = detail
         self.candidates = candidates or []
+        self.http_status = http_status
+        self.provider_response = provider_response
 
 
 def _preview(raw: bytes, limit: int = 500) -> str:
     return raw[:limit].decode("utf-8", errors="replace")
 
 
+def _is_provider_error_xml(raw: bytes) -> bool:
+    """Detect explicit provider failure envelopes without interpreting their meaning.
+
+    The original provider payload remains the canonical error detail. This only
+    distinguishes failure from a legitimate success payload, including a normal
+    zero-result search.
+    """
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError:
+        return False
+
+    def first(tag: str) -> str:
+        node = root.find(f".//{tag}")
+        return (node.text or "").strip() if node is not None and node.text else ""
+
+    result_code = first("resultCode")
+    if result_code and result_code not in {"0", "00"}:
+        return True
+    if first("resultMsg").lower() in {"fail", "failed", "failure", "error"}:
+        return True
+    if root.tag in {"Response", "OpenAPI_ServiceResponse", "Error", "Errors", "에러"}:
+        return True
+    return root.find(".//cmmMsgHeader") is not None
+
+
 def _require_xml_payload(raw: bytes) -> None:
-    """Reject known non-XML upstream payloads before ElementTree parsing."""
+    """Reject transport/provider failure payloads before domain parsing."""
     if not raw:
         raise ProviderResponseError(
             "EMPTY_RESPONSE",
@@ -72,6 +100,15 @@ def _require_xml_payload(raw: bytes) -> None:
             "upstream returned an HTML page instead of an XML payload",
             retryable=True,
             raw_preview=_preview(raw),
+            provider_response=raw.decode("utf-8", errors="replace"),
+        )
+    if _is_provider_error_xml(raw):
+        raise ProviderResponseError(
+            "PROVIDER_DECLARED_ERROR",
+            "official provider returned an error response",
+            retryable=False,
+            raw_preview=_preview(raw),
+            provider_response=raw.decode("utf-8", errors="replace"),
         )
 
 

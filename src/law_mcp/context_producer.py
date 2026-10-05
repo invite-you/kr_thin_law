@@ -9,6 +9,7 @@ import hashlib
 import json
 from typing import Any, Callable, Iterable
 
+from .card_source import ProviderResponseError
 from .context_packet import content_hash, validate_packet
 
 
@@ -166,7 +167,11 @@ class ContextProducer:
                     if not isinstance(fragments[request_key], dict):
                         fetch_error = "FETCH_RESULT_NOT_OBJECT"
                         fragments[request_key] = {}
-                except Exception as exc:  # retain the failed observation, then continue assembling
+                except ProviderResponseError:
+                    # Upstream/provider failures are transport failures, not
+                    # "missing context". Preserve them as real MCP errors.
+                    raise
+                except Exception as exc:  # retain non-provider assembly failures, then continue
                     fetch_error = f"{type(exc).__name__}: {exc}"
                     fragments[request_key] = {}
             fragment = fragments[request_key]
