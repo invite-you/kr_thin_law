@@ -80,6 +80,7 @@ def test_live_lawgo_response_envelope_is_provider_error_not_success_empty():
     assert "IP주소 및 도메인주소" in err.provider_message
     assert err.provider_fields["result"].startswith("사용자 정보 검증")
     assert err.provider_fields["msg"].startswith("OPEN API 호출")
+    assert err.provider_response == LIVE_AUTH_FAILURE.decode("utf-8")
     assert client.attempts[0]["status"] == "PROVIDER_DECLARED_ERROR"
     assert client.attempts[0]["http_status"] == 200
     assert "provider_message" in client.attempts[0]
