@@ -457,6 +457,35 @@ def extract_same_document_references(
     return resolved, unresolved
 
 
+def _validate_body_targets(
+    observations: list[dict[str, Any]],
+    unresolved: list[dict[str, Any]],
+    *,
+    articles: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    known = {str(article["node_key"]) for article in articles}
+    valid: list[dict[str, Any]] = []
+    rejected = list(unresolved)
+    next_id = len(rejected) + 1
+    for observation in observations:
+        target = observation["target"]
+        node = _article_key(target["article"], target.get("branch"))
+        if node in known:
+            valid.append(observation)
+            continue
+        rejected.append({
+            "observation_id": f"body-unresolved:target:{next_id}",
+            "source": dict(observation["source"]),
+            "raw_text": observation["raw_text"],
+            "span": dict(observation["span"]),
+            "context": observation["context"],
+            "reason": "TARGET_NOT_PRESENT_IN_DOCUMENT_VERSION",
+            "candidate_target": dict(target),
+        })
+        next_id += 1
+    return valid, rejected
+
+
 def _split_csv(value: Any) -> list[str]:
     return [item.strip() for item in str(value or "").split(",") if item.strip()]
 
@@ -730,6 +759,11 @@ def fetch_law_reference_bundle(
 
     body_observations, unresolved_body = extract_same_document_references(
         document["articles"], source_title=str(body_source.get("law") or "")
+    )
+    body_observations, unresolved_body = _validate_body_targets(
+        body_observations,
+        unresolved_body,
+        articles=document["articles"],
     )
     edges, provider_observations = _reference_edges(
         source_title=str(body_source.get("law") or ""),
