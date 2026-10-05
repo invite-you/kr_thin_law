@@ -37,11 +37,11 @@ _THIS_DOC_SUFFIX = re.compile(rf"(?:^|\s)이\s*{_DOC_KIND}\s*$")
 _RELATIVE_DOC_SUFFIX = re.compile(rf"(?:^|\s)(?:같은|동)\s*{_DOC_KIND}\s*$")
 _OTHER_DOC_SUFFIX = re.compile(rf"(?:^|\s){_DOC_KIND}\s*$")
 _DOC_ANCHOR_RE = re.compile(
-    rf"(?<![가-힣])(?:(?P<prefix>이|같은|동)\\s*)?"
-    rf"(?P<kind>{_DOC_KIND})\\s*제[1-9]\\d{{0,3}}조"
+    rf"(?<![가-힣])(?:(?P<prefix>이|같은|동)\s*)?"
+    rf"(?P<kind>{_DOC_KIND})\s*제[1-9]\d{{0,3}}조"
 )
 _QUOTED_DOC_ANCHOR_RE = re.compile(
-    r"「(?P<title>[^」]{1,120})」\\s*제[1-9]\\d{0,3}조"
+    r"「(?P<title>[^」]{1,120})」\s*제[1-9]\d{0,3}조"
 )
 _RANGE_RE = re.compile(
     r"제(?P<a1>[1-9]\d{0,3})조(?:의(?P<b1>[1-9]\d{0,2}))?"
@@ -284,7 +284,7 @@ def _scope_before(text: str, start: int, source_title: str) -> tuple[str, str]:
     quoted = _QUOTED_DOC_SUFFIX.search(lookback)
     if quoted:
         title = quoted.group("title").strip()
-        if re.sub(r"\\s+", "", title) == re.sub(r"\\s+", "", source_title):
+        if re.sub(r"\s+", "", title) == re.sub(r"\s+", "", source_title):
             return "same_document", "SELF_NAMED_DOCUMENT"
         return "not_same_document", "EXTERNAL_NAMED_DOCUMENT"
 
@@ -300,7 +300,7 @@ def _scope_before(text: str, start: int, source_title: str) -> tuple[str, str]:
     # 「형법」 제355조 또는 제356조 / 법 제29조 및 제30조.
     # Keep that scope through the current punctuation-bounded clause.
     clause_start = max(
-        text.rfind("\\n", 0, start),
+        text.rfind("\n", 0, start),
         text.rfind(".", 0, start),
         text.rfind("。", 0, start),
         text.rfind(";", 0, start),
@@ -311,7 +311,7 @@ def _scope_before(text: str, start: int, source_title: str) -> tuple[str, str]:
     anchors: list[tuple[int, str, str]] = []
     for match in _QUOTED_DOC_ANCHOR_RE.finditer(clause):
         title = match.group("title").strip()
-        if re.sub(r"\\s+", "", title) == re.sub(r"\\s+", "", source_title):
+        if re.sub(r"\s+", "", title) == re.sub(r"\s+", "", source_title):
             anchors.append((
                 match.start(), "same_document", "SELF_NAMED_DOCUMENT_INHERITED"
             ))
