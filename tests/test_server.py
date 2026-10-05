@@ -23,6 +23,14 @@ def test_real_mcp_protocol_tools_and_source_guard():
                 "context_packet", "validate_context_packet",
                 "law_search", "admin_rule_article", "law_supplements", "decision_document",
             }
+            bundle_tool = next(tool for tool in result.tools if tool.name == "law_reference_bundle")
+            bundle_schema = bundle_tool.inputSchema
+            selector_schema = bundle_schema["properties"]["selector"]
+            assert selector_schema["discriminator"]["propertyName"] == "mode"
+            assert len(selector_schema["oneOf"]) == 2
+            assert bundle_schema["properties"]["text_mode"]["enum"] == [
+                "graph_only", "referenced_units", "full_document",
+            ]
             result = await client.call_tool("law_article", {
                 "mst": "283839", "effective_date": "20260911", "article": 2,
                 "expected_law_key": "0113572026031021445", "expected_law_id": "011357",
