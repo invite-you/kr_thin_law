@@ -78,7 +78,7 @@ class OfficialClient:
         query = urllib.parse.urlencode({**clean, "type": "XML", "OC": self.oc})
         request = urllib.request.Request(
             url + "?" + query,
-            headers={"User-Agent": "legal-thin-mcp/4.9.0", "Accept": "application/xml"},
+            headers={"User-Agent": "legal-thin-mcp/4.9.1", "Accept": "application/xml"},
         )
         with self._lock:
             for attempt in range(1, self.max_attempts + 1):
