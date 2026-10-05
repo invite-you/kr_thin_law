@@ -48,8 +48,12 @@ class ProviderResponseError(ValueError):
         provider_message: str = "",
         provider_fields: dict[str, str] | None = None,
         http_status: int | None = None,
+        provider_response: str = "",
     ) -> None:
-        super().__init__(f"[{error_code}] {detail}")
+        message = f"[{error_code}] {detail}"
+        if provider_response:
+            message += "\nUPSTREAM_RESPONSE:\n" + provider_response
+        super().__init__(message)
         self.error_code = error_code
         self.retryable = retryable
         self.raw_preview = raw_preview
@@ -59,6 +63,7 @@ class ProviderResponseError(ValueError):
         self.provider_message = str(provider_message or "")
         self.provider_fields = dict(provider_fields or {})
         self.http_status = http_status
+        self.provider_response = provider_response
 
 
 def _preview(raw: bytes, limit: int = 500) -> str:
@@ -157,12 +162,13 @@ def _raise_provider_declared_failure(raw: bytes) -> None:
     message = failure["provider_message"]
     raise ProviderResponseError(
         "PROVIDER_DECLARED_ERROR",
-        f"official provider rejected the request (code={code}, message={message})",
+        "official provider returned an error response",
         retryable=False,
         raw_preview=_preview(raw),
         provider_code=failure["provider_code"],
         provider_message=failure["provider_message"],
         provider_fields=failure["provider_fields"],
+        provider_response=raw.decode("utf-8", errors="replace"),
     )
 
 
@@ -181,6 +187,7 @@ def _require_xml_payload(raw: bytes) -> None:
             "upstream returned an HTML page instead of an XML payload",
             retryable=True,
             raw_preview=_preview(raw),
+            provider_response=raw.decode("utf-8", errors="replace"),
         )
     _raise_provider_declared_failure(raw)
 
