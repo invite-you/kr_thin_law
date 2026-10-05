@@ -237,6 +237,79 @@ def test_full_document_parser_survives_large_real_fixtures(
     assert out["meta"]["response_sha256"]
 
 
+
+@pytest.mark.parametrize(
+    ("body_name", "relation_name", "mst", "date", "law_key", "law_id", "minimum_edges"),
+    [
+        (
+            "eflaw_full_284025_criminal.xml",
+            "lsDelegated_284025_criminal.xml",
+            "284025",
+            "20260913",
+            "0016922026031221450",
+            "001692",
+            1,
+        ),
+        (
+            "eflaw_full_284415_civil.xml",
+            "lsDelegated_284415_civil.xml",
+            "284415",
+            "20260317",
+            "0017062026031721454",
+            "001706",
+            1,
+        ),
+    ],
+)
+def test_bundle_generalizes_to_criminal_and_civil_full_fixtures(
+    body_name: str,
+    relation_name: str,
+    mst: str,
+    date: str,
+    law_key: str,
+    law_id: str,
+    minimum_edges: int,
+):
+    client = PairFixtureClient(
+        (FIX / body_name).read_bytes(),
+        (FIX / relation_name).read_bytes(),
+    )
+    out = fetch_law_reference_bundle(
+        client,
+        selector={
+            "mode": "version",
+            "mst": mst,
+            "effective_date": date,
+            "expected_law_key": law_key,
+            "expected_law_id": law_id,
+        },
+        text_mode="graph_only",
+    )
+    assert out["status"] == "OK"
+    assert out["coverage"]["counts"]["document_articles"] > 300
+    assert out["coverage"]["counts"]["reference_edges"] >= minimum_edges
+    assert out["coverage"]["semantic_relations"] == "NOT_EVALUATED"
+    assert len(client.calls) == 2
+
+
+def test_real_tax_article_keeps_external_and_same_law_prefix_unresolved():
+    document = _parse_document(
+        (FIX / "eflaw_224875_tax_penalty_art3.xml").read_bytes(),
+        requested_mst="224875",
+        effective_date="20210101",
+    )
+    resolved, unresolved = extract_same_document_references(
+        document["articles"], source_title=document["source"]["law"]
+    )
+    # 국세기본법 제45조 / 같은 법 제45조의3 must never become
+    # 조세범 처벌법 제45조 / 제45조의3 reverse edges.
+    assert not any(
+        row["target"]["article"] == "45" for row in resolved
+    )
+    reasons = {row["reason"] for row in unresolved}
+    assert "EXTERNAL_NAMED_DOCUMENT" in reasons
+    assert "RELATIVE_DOCUMENT_PREFIX" in reasons
+
 def test_reverse_path_expansion_is_cycle_safe():
     edges = [
         {
