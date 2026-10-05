@@ -1,3 +1,13 @@
+# 4.9.2 — 2026-10-06
+
+- `law_reference_bundle`의 MCP wire selector를 중첩 `oneOf/discriminator` union에서 단순 JSON object로 변경하고, 엄격 검증을 기존 core `_selector()` 하나로 통일했습니다.
+- 4.9.1을 대상으로 실제 MCP `Client.call_tool` 회귀를 먼저 추가해 유효한 current/version selector가 둘 다 `string_pattern_mismatch`로 provider I/O 전에 차단되는 문제를 재현했습니다. 수정 뒤 동일 E2E가 provider까지 도달합니다.
+- 유효 version selector에서 `expected_law_key`/응답 hash가 빠지거나 알 수 없는 selector 필드가 들어오면 provider 호출 수 0인 상태에서 `INVALID_INPUT`으로 닫는 회귀를 추가했습니다.
+- public smoke를 내부 Python 함수 직접 호출에서 실제 MCP wire 호출로 변경했습니다. 공개 `OC=test`로 자동차관리법 current bundle(198개 조문, 1,237 reference edges, upstream 2회)을 통과했습니다.
+- 별도 live probe에서 같은 current 응답의 공식 MST/시행일/법령키를 사용해 exact version selector를 MCP wire로 다시 호출했고 MST `290737`, 시행일 `20261002`, 법령키 `0017472026080421857`을 동일하게 결박하며 upstream 2회로 성공했습니다.
+- capture redaction에서 URL-encoded `OC%3D<credential>`이 남는 결함을 회귀로 재현하고, literal 및 URL-encoded/double-encoded OC echo를 capture/error 구성 전에 정확한 known-value 방식으로 마스킹하도록 수정했습니다.
+- Python 3.10/3.12에서 231개 회귀, ruff, mypy, package build를 통과했습니다.
+
 # 4.9.1 — 2026-10-06
 
 - 국가법령정보 Open API의 실패 응답을 정상 빈 데이터로 보이게 만들 수 있던 오류 처리를 수정했습니다.

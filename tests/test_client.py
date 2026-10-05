@@ -118,3 +118,25 @@ def test_fixture_path_cannot_escape_explicit_root(tmp_path):
         client._call(SERVICE_URL, {"target": "eflaw"})
     client = FixtureClient(manifest, allowed_root=tmp_path)
     assert client._call(SERVICE_URL, {"target": "eflaw"}) == b"<secret/>"
+
+
+def test_capture_redacts_percent_encoded_credential_marker(tmp_path):
+    credential = "private-credential"
+    payload = (
+        "<valid><url>https://example.test/path?next=OC%3D"
+        + credential
+        + "</url></valid>"
+    ).encode("utf-8")
+    opener, _ = scripted([payload])
+    client = OfficialClient(
+        credential,
+        opener=opener,
+        capture_dir=tmp_path,
+        max_attempts=1,
+    )
+    client._call(SERVICE_URL, {"target": "eflaw"})
+
+    captured = b"".join(path.read_bytes() for path in tmp_path.glob("*.xml"))
+    assert credential.encode("utf-8") not in captured
+    assert credential not in (tmp_path / "attempts.jsonl").read_text(encoding="utf-8")
+    assert credential not in (tmp_path / "ledger.jsonl").read_text(encoding="utf-8")
