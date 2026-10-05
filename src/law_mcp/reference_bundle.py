@@ -36,6 +36,13 @@ _QUOTED_DOC_SUFFIX = re.compile(r"「(?P<title>[^」]{1,120})」\s*(?:의\s*)?$"
 _THIS_DOC_SUFFIX = re.compile(rf"(?:^|\s)이\s*{_DOC_KIND}\s*$")
 _RELATIVE_DOC_SUFFIX = re.compile(rf"(?:^|\s)(?:같은|동)\s*{_DOC_KIND}\s*$")
 _OTHER_DOC_SUFFIX = re.compile(rf"(?:^|\s){_DOC_KIND}\s*$")
+_DOC_ANCHOR_RE = re.compile(
+    rf"(?<![가-힣])(?:(?P<prefix>이|같은|동)\\s*)?"
+    rf"(?P<kind>{_DOC_KIND})\\s*제[1-9]\\d{{0,3}}조"
+)
+_QUOTED_DOC_ANCHOR_RE = re.compile(
+    r"「(?P<title>[^」]{1,120})」\\s*제[1-9]\\d{0,3}조"
+)
 _RANGE_RE = re.compile(
     r"제(?P<a1>[1-9]\d{0,3})조(?:의(?P<b1>[1-9]\d{0,2}))?"
     r"\s*부터\s*"
@@ -273,21 +280,63 @@ def _iter_segments(article: dict[str, Any]) -> Iterable[tuple[str, str]]:
 
 
 def _scope_before(text: str, start: int, source_title: str) -> tuple[str, str]:
-    lookback = text[max(0, start - 140):start]
+    lookback = text[max(0, start - 220):start]
     quoted = _QUOTED_DOC_SUFFIX.search(lookback)
     if quoted:
         title = quoted.group("title").strip()
-        if re.sub(r"\s+", "", title) == re.sub(r"\s+", "", source_title):
+        if re.sub(r"\\s+", "", title) == re.sub(r"\\s+", "", source_title):
             return "same_document", "SELF_NAMED_DOCUMENT"
         return "not_same_document", "EXTERNAL_NAMED_DOCUMENT"
 
-    tail = lookback[-40:]
+    tail = lookback[-60:]
     if _THIS_DOC_SUFFIX.search(tail):
         return "same_document", "THIS_DOCUMENT_PREFIX"
     if _RELATIVE_DOC_SUFFIX.search(tail):
         return "unresolved_document", "RELATIVE_DOCUMENT_PREFIX"
     if _OTHER_DOC_SUFFIX.search(tail):
         return "not_same_document", "EXTERNAL_DOCUMENT_PREFIX"
+
+    # One document marker often governs several coordinated locators:
+    # 「형법」 제355조 또는 제356조 / 법 제29조 및 제30조.
+    # Keep that scope through the current punctuation-bounded clause.
+    clause_start = max(
+        text.rfind("\\n", 0, start),
+        text.rfind(".", 0, start),
+        text.rfind("。", 0, start),
+        text.rfind(";", 0, start),
+        text.rfind("!", 0, start),
+        text.rfind("?", 0, start),
+    ) + 1
+    clause = text[clause_start:start]
+    anchors: list[tuple[int, str, str]] = []
+    for match in _QUOTED_DOC_ANCHOR_RE.finditer(clause):
+        title = match.group("title").strip()
+        if re.sub(r"\\s+", "", title) == re.sub(r"\\s+", "", source_title):
+            anchors.append((
+                match.start(), "same_document", "SELF_NAMED_DOCUMENT_INHERITED"
+            ))
+        else:
+            anchors.append((
+                match.start(), "not_same_document", "EXTERNAL_NAMED_DOCUMENT_INHERITED"
+            ))
+    for match in _DOC_ANCHOR_RE.finditer(clause):
+        prefix = str(match.group("prefix") or "")
+        if prefix == "이":
+            anchors.append((
+                match.start(), "same_document", "THIS_DOCUMENT_PREFIX_INHERITED"
+            ))
+        elif prefix in {"같은", "동"}:
+            anchors.append((
+                match.start(), "unresolved_document", "RELATIVE_DOCUMENT_PREFIX_INHERITED"
+            ))
+        else:
+            anchors.append((
+                match.start(), "not_same_document", "EXTERNAL_DOCUMENT_PREFIX_INHERITED"
+            ))
+    if anchors:
+        _, scope, basis = max(anchors, key=lambda row: row[0])
+        return scope, basis
+
     return "same_document", "BARE_ARTICLE_LOCATOR"
 
 
