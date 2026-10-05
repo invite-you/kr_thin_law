@@ -1,8 +1,8 @@
-# Legal Thin MCP 4.9.1
+# Legal Thin MCP 4.9.2
 
 공식 한국 법령 자료를 정확한 판본과 원문 구조로 전달하는 실행 가능한 프로젝트입니다. MCP는 모델이 외부 조회 도구를 호출하는 연결 규약입니다. 법적 의미와 필요한 참조의 선택은 이 프로젝트를 사용하는 별도 분석기가 맡습니다.
 
-현재 실행 기준은 이 폴더의 `src/`, `tests/`, `pyproject.toml`입니다. 이 저장소는 4.8.0에서 공개를 시작했고 4.9.0에서 문서 단위 참조 묶음을 추가했습니다. 4.9.1부터 국가법령정보 Open API가 실패 응답을 돌려주면 이를 정상 빈 결과로 바꾸지 않고 MCP tool error로 전달합니다. 과거 커밋과 인계 ZIP은 원래 로컬 프로젝트에 보존했습니다.
+현재 실행 기준은 이 폴더의 `src/`, `tests/`, `pyproject.toml`입니다. 이 저장소는 4.8.0에서 공개를 시작했고 4.9.0에서 문서 단위 참조 묶음을 추가했습니다. 4.9.1부터 국가법령정보 Open API 실패를 정상 빈 결과로 바꾸지 않고 MCP tool error로 전달합니다. 4.9.2에서는 `law_reference_bundle`의 selector wire schema를 단순 JSON object로 바꾸고 엄격 검증은 내부 validator 하나로 통일해 MCP host의 union/discriminator 호환성 문제를 제거했습니다. 과거 커밋과 인계 ZIP은 원래 로컬 프로젝트에 보존했습니다.
 
 ## 설치와 실행
 
@@ -18,7 +18,7 @@ $env:LAW_API_OC = '발급받은 국가법령정보 API 값'
 
 서버는 표준 입출력으로 MCP 메시지를 교환하므로 직접 실행하면 연결 요청을 기다립니다. 연결 설정 예시는 `samples/mcp_config.json`입니다. 기존 Codex 설정을 자동 변경하지 않습니다.
 
-실행 중 원문과 실패 응답은 기본적으로 사용자 폴더의 `.legal-thin-mcp/captures`에 보존합니다. `LAW_MCP_CAPTURE_DIR` 또는 `--capture-dir`로 위치를 지정할 수 있습니다. API 값은 요청에만 넣고 기록에는 넣지 않습니다. 저장 응답은 재현 근거이며 응답 캐시로 사용하지 않습니다.
+실행 중 원문과 실패 응답은 기본적으로 사용자 폴더의 `.legal-thin-mcp/captures`에 보존합니다. `LAW_MCP_CAPTURE_DIR` 또는 `--capture-dir`로 위치를 지정할 수 있습니다. API 값은 요청에만 넣고 기록에는 넣지 않습니다. 응답 링크에 `OC=` 또는 `OC%3D` 형태로 인증값이 반사되어도 capture 전에 알려진 값만 정확히 마스킹합니다. 저장 응답은 재현 근거이며 응답 캐시로 사용하지 않습니다.
 
 Open API 실패는 데이터 부재와 구분합니다. HTTP 200이라도 제공처가 `resultCode != 00`, `resultMsg=fail`, 또는 오류용 `Response` XML을 돌려주면 MCP 호출은 `is_error=true`가 됩니다. MCP는 오류 내용을 자체 문구로 재해석하지 않고, API 이용값(`OC`)만 가린 뒤 제공처가 보낸 오류 XML을 `UPSTREAM_RESPONSE`로 그대로 전달합니다. 반대로 `resultCode=00`이면서 `totalCnt=0`인 정상 검색은 성공한 빈 결과로 유지합니다.
 
@@ -49,6 +49,8 @@ Open API 실패는 데이터 부재와 구분합니다. HTTP 200이라도 제공
 ### 문서 단위 참조 묶음
 
 `law_reference_bundle`은 비싼 전체 본문 조회와 참조 조회를 한 번씩 실행한 뒤 그 결과를 한 묶음으로 재사용하기 위한 도구입니다.
+
+MCP wire에는 `selector`를 단순 JSON object로 노출합니다. current/version 분기는 wire의 `oneOf`/`discriminator`에 맡기지 않고 서버 내부의 단일 strict validator가 `mode`, 허용 필드, 숫자·날짜, 독립 판본 확인값을 검사합니다. 따라서 유효 selector가 host schema 해석 차이로 provider 호출 전에 거부되지 않습니다.
 
 현행본은 안정 법령 ID만 지정합니다.
 
