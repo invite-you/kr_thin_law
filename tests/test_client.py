@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import http.client
 import json
 import urllib.error
 
@@ -140,3 +141,33 @@ def test_capture_redacts_percent_encoded_credential_marker(tmp_path):
     assert credential.encode("utf-8") not in captured
     assert credential not in (tmp_path / "attempts.jsonl").read_text(encoding="utf-8")
     assert credential not in (tmp_path / "ledger.jsonl").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("http_error", [False, True])
+@pytest.mark.parametrize("read_error", ["partial", "timeout"])
+def test_interrupted_response_read_is_captured_and_retried(tmp_path, http_error, read_error):
+    class InterruptedResponse(Response):
+        def read(self, size=-1):
+            if read_error == "partial":
+                raise http.client.IncompleteRead(b"<url>OC=private-credential", 10)
+            raise TimeoutError("read timed out")
+
+    events = [InterruptedResponse(), Response(b"<valid/>")]
+    if http_error:
+        events[0] = urllib.error.HTTPError(SERVICE_URL, 503, "error", {}, events[0])
+
+    def opener(request, timeout):
+        event = events.pop(0)
+        if isinstance(event, Exception):
+            raise event
+        return event
+
+    client = OfficialClient("private-credential", opener=opener, capture_dir=tmp_path,
+                            max_attempts=2, sleep=lambda _: None)
+    assert client._call(SERVICE_URL, {"target": "eflaw"}) == b"<valid/>"
+    assert [row["status"] for row in client.attempts] == ["TRANSPORT_ERROR", "OK"]
+    assert client.attempts[0]["http_status"] == (503 if http_error else 200)
+    captured = b"".join(path.read_bytes() for path in tmp_path.glob("*.xml"))
+    assert b"private-credential" not in captured
+    if read_error == "partial":
+        assert b"OC=REDACTED" in captured

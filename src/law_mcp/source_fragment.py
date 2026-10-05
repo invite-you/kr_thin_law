@@ -31,7 +31,9 @@ _SPECS: dict[str, dict[str, Any]] = {
         "sequence_tags": ("일련번호", "행정규칙일련번호"),
         "title_tags": ("행정규칙명",), "effective_tags": ("시행일자",),
         "issued_tags": ("발령일자",),
-        "content_tags": ("조문내용", "부칙내용", "별표내용", "개정문내용", "제개정이유내용"),
+        # Amendment instructions and reasons remain in provider_tree/raw XML;
+        # they cannot substitute for the consolidated normative body.
+        "content_tags": ("조문내용", "부칙내용", "별표내용"),
         "stable_params": ("LID",),
         "roots": ("AdmRulService", "행정규칙", "AdmRul"),
     },
@@ -41,7 +43,7 @@ _SPECS: dict[str, dict[str, Any]] = {
         "sequence_tags": ("자치법규일련번호",),
         "title_tags": ("자치법규명",), "effective_tags": ("시행일자",),
         "issued_tags": ("공포일자",),
-        "content_tags": ("조내용", "부칙내용", "별표내용", "개정문내용", "제개정이유내용"),
+        "content_tags": ("조내용", "부칙내용", "별표내용"),
         "stable_params": ("ID",),
         "roots": ("LawService", "법령", "자치법규", "OrdinService", "ordin"),
     },
