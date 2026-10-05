@@ -44,6 +44,10 @@ class ProviderResponseError(ValueError):
         retryable: bool,
         raw_preview: str = "",
         candidates: list[dict[str, Any]] | None = None,
+        provider_code: str = "",
+        provider_message: str = "",
+        provider_fields: dict[str, str] | None = None,
+        http_status: int | None = None,
     ) -> None:
         super().__init__(f"[{error_code}] {detail}")
         self.error_code = error_code
@@ -51,10 +55,101 @@ class ProviderResponseError(ValueError):
         self.raw_preview = raw_preview
         self.detail = detail
         self.candidates = candidates or []
+        self.provider_code = str(provider_code or "")
+        self.provider_message = str(provider_message or "")
+        self.provider_fields = dict(provider_fields or {})
+        self.http_status = http_status
 
 
 def _preview(raw: bytes, limit: int = 500) -> str:
     return raw[:limit].decode("utf-8", errors="replace")
+
+
+def _provider_declared_failure(raw: bytes) -> dict[str, Any] | None:
+    """Return a normalized provider-declared failure, if present.
+
+    law.go.kr search responses document resultCode=00/resultMsg=success as
+    success and resultCode=01/resultMsg=fail as failure. Authentication and
+    gateway failures can instead arrive as a well-formed XML <Response>
+    envelope. This function is intentionally narrow: it only inspects explicit
+    status/error fields and never treats a legitimate empty result set as an
+    error.
+    """
+    try:
+        root = ET.fromstring(raw)
+    except ET.ParseError:
+        return None
+
+    def first(tag: str) -> str:
+        node = root.find(f".//{tag}")
+        return (node.text or "").strip() if node is not None and node.text else ""
+
+    direct = {
+        child.tag: (child.text or "").strip()
+        for child in list(root)
+        if len(child) == 0
+    }
+    result_code = direct.get("resultCode", "")
+    result_msg = direct.get("resultMsg", "")
+    msg_norm = result_msg.strip().lower()
+    declared_fail = bool(result_code and result_code not in {"0", "00"})
+    declared_fail = declared_fail or msg_norm in {"fail", "failed", "failure", "error"}
+
+    field_tags = (
+        "resultCode", "resultMsg",
+        "errMsg", "returnAuthMsg", "returnReasonCode",
+        "errorCode", "errorMessage",
+        "code", "message", "msg",
+    )
+    fields = {tag: first(tag) for tag in field_tags if first(tag)}
+
+    # The provider also uses a generic <Response> envelope for auth/request
+    # failures. Treat it as an error only when it carries explicit error-ish
+    # fields; a random XML node named Response is not enough.
+    envelope_error = root.tag in {"OpenAPI_ServiceResponse", "Response"} and bool(fields)
+    cmm_error = root.find(".//cmmMsgHeader") is not None and bool(fields)
+
+    if not (declared_fail or envelope_error or cmm_error):
+        return None
+
+    provider_code = (
+        result_code
+        or fields.get("returnReasonCode", "")
+        or fields.get("errorCode", "")
+        or fields.get("code", "")
+    )
+    provider_message = (
+        result_msg
+        or fields.get("returnAuthMsg", "")
+        or fields.get("errMsg", "")
+        or fields.get("errorMessage", "")
+        or fields.get("message", "")
+        or fields.get("msg", "")
+        or "provider declared request failure"
+    )
+    return {
+        "provider_code": provider_code,
+        "provider_message": provider_message,
+        "provider_fields": fields,
+        "provider_root": root.tag,
+    }
+
+
+def _raise_provider_declared_failure(raw: bytes) -> None:
+    failure = _provider_declared_failure(raw)
+    if failure is None:
+        return
+    code = failure["provider_code"] or "UNKNOWN"
+    message = failure["provider_message"]
+    raise ProviderResponseError(
+        "PROVIDER_DECLARED_ERROR",
+        f"official provider rejected the request (code={code}, message={message})",
+        retryable=False,
+        raw_preview=_preview(raw),
+        provider_code=failure["provider_code"],
+        provider_message=failure["provider_message"],
+        provider_fields=failure["provider_fields"],
+    )
 
 
 def _require_xml_payload(raw: bytes) -> None:
@@ -73,6 +168,7 @@ def _require_xml_payload(raw: bytes) -> None:
             retryable=True,
             raw_preview=_preview(raw),
         )
+    _raise_provider_declared_failure(raw)
 
 
 def _select_article(
